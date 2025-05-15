@@ -1,24 +1,24 @@
 import React from 'react';
-import logo from './logo.svg';
 import './App.css';
+import SkydriftArchipelagoSimulation from './components/simulation';
 
 function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <img 
+            src={`${process.env.PUBLIC_URL}/favicon.png`} 
+            alt="Skydrift Logo" 
+            className="App-logo"
+            style={{ marginRight: '15px' }} 
+          />
+          <h1>Skydrift Archipelago Simulator</h1>
+        </div>
       </header>
+      <main className="App-main">
+        <SkydriftArchipelagoSimulation />
+      </main>
     </div>
   );
 }

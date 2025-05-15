@@ -1,0 +1,514 @@
+import React, { useEffect, useRef } from 'react';
+import { Box, styled } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import SkydriftArchipelagoSimulator, { Island, Position, Journey } from '../utils/sim';
+
+// Custom styled component for the canvas container
+const CanvasContainer = styled(Box)(({ theme }) => ({
+  flexGrow: 1,
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  overflow: 'hidden',
+  marginTop: theme.spacing(2),
+  backgroundColor: theme.palette.background.paper,
+  borderRadius: theme.shape.borderRadius,
+  width: '100%',
+  // Fix height to prevent excessive vertical size
+  height: 'min(calc(100vh - 350px), 1200px)', // Use the smaller of these two values
+  minHeight: '400px'
+}));
+
+interface SimulationCanvasProps {
+  simulator: SkydriftArchipelagoSimulator;
+  islands: Island[];
+  time: number;
+  showOrbits: boolean;
+  showTrails: boolean;
+  trailLength: number;
+  activeJourney: Journey | null;
+  viewportScale: number;
+  onResize: (width: number, height: number) => void;
+}
+
+const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
+  simulator,
+  islands,
+  time,
+  showOrbits,
+  showTrails,
+  trailLength,
+  activeJourney,
+  viewportScale,
+  onResize
+}) => {
+  const theme = useTheme();
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasContainerRef = useRef<HTMLDivElement | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  
+  // CENTER_X and CENTER_Y are initially 0 and will be set in the resize observer
+  const centerXRef = useRef<number>(0);
+  const centerYRef = useRef<number>(0);
+
+  // Set up resize observer for canvas
+  useEffect(() => {
+    if (canvasContainerRef.current) {
+      const resizeObserver = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          if (entry.contentRect) {
+            // Get the container size
+            const width = Math.floor(entry.contentRect.width);
+            const height = Math.floor(entry.contentRect.height);
+            
+            // Update state with new dimensions
+            onResize(width, height);
+            
+            // Update center references
+            centerXRef.current = width / 2;
+            centerYRef.current = height / 2;
+          }
+        }
+      });
+      
+      resizeObserver.observe(canvasContainerRef.current);
+      resizeObserverRef.current = resizeObserver;
+    }
+    
+    return () => {
+      if (resizeObserverRef.current && canvasContainerRef.current) {
+        resizeObserverRef.current.unobserve(canvasContainerRef.current);
+        resizeObserverRef.current.disconnect();
+      }
+    };
+  }, [onResize]);
+
+  // Draw everything on the canvas
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Update canvas dimensions to match container
+    canvas.width = canvasContainerRef.current?.clientWidth || 800;
+    canvas.height = canvasContainerRef.current?.clientHeight || 800;
+    
+    // Set simulator center coordinates
+    simulator.setCenter(centerXRef.current, centerYRef.current);
+    
+    // Set simulator time
+    simulator.setTime(time);
+    
+    // Clear canvas with slightly off-white background for better contrast
+    ctx.fillStyle = "#fafafa"; // MUI background.default
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw center point
+    ctx.fillStyle = theme.palette.text.primary;
+    ctx.beginPath();
+    ctx.arc(centerXRef.current, centerYRef.current, 4, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // Draw epicycle circles and orbits
+    if (showOrbits) {
+      islands.forEach(island => {
+        // Skip if island is not visible
+        if (!island.visible) return;
+        
+        // Draw epicycle circles
+        const positions = simulator.calculateAllPositions(island);
+        
+        ctx.strokeStyle = island.color;
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.2;
+        
+        // Draw a circle for each epicycle
+        for (let i = 0; i < island.cycles.length; i++) {
+          const cycle = island.cycles[i];
+          const center = positions[i]; // Current center for this epicycle
+          
+          // Calculate radius in miles, then scale for rendering
+          const radius = simulator.calculateRenderRadius(cycle.period) * viewportScale;
+          
+          ctx.beginPath();
+          ctx.arc(center.x * viewportScale + centerXRef.current, center.y * viewportScale + centerYRef.current, radius, 0, 2 * Math.PI);
+          ctx.stroke();
+        }
+        
+        // Draw epicycle lines (the "arms" of the system)
+        ctx.strokeStyle = island.color;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([3, 3]); // More refined dashed line style
+        
+        // Draw lines connecting the epicycle centers
+        ctx.beginPath();
+        ctx.moveTo(positions[0].x * viewportScale + centerXRef.current, positions[0].y * viewportScale + centerYRef.current);
+        
+        for (let i = 1; i < positions.length; i++) {
+          ctx.lineTo(positions[i].x * viewportScale + centerXRef.current, positions[i].y * viewportScale + centerYRef.current);
+        }
+        
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        ctx.globalAlpha = 1;
+      });
+    }
+    
+    // Draw trails
+    if (showTrails) {
+      islands.forEach(island => {
+        if (island.visible) {
+          drawIslandTrail(ctx, island);
+        }
+      });
+    }
+    
+    // Draw active journey path with MUI styling
+    if (activeJourney && activeJourney.path.length > 1) {
+      drawJourney(ctx);
+    }
+    
+    // Draw islands
+    islands.forEach(island => {
+      // Skip if island is not visible
+      if (!island.visible) return;
+      
+      const position = simulator.calculatePosition(island);
+      
+      // Draw island circle with shadow for depth
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetX = 1;
+      ctx.shadowOffsetY = 1;
+      
+      ctx.fillStyle = island.color;
+      ctx.beginPath();
+      ctx.arc(position.x * viewportScale + centerXRef.current, position.y * viewportScale + centerYRef.current, island.radius, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.restore();
+      
+      // Draw island name with better typography and background
+      ctx.font = "500 12px Roboto, Arial, sans-serif"; // MUI typography - medium weight
+      
+      const nameText = island.name;
+      const textWidth = ctx.measureText(nameText).width;
+      const nameX = position.x * viewportScale + centerXRef.current + 12;
+      const nameY = position.y * viewportScale + centerYRef.current - 8;
+      
+      // Draw background capsule for label
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      const padding = 4;
+      const capsuleRadius = 8;
+      
+      ctx.beginPath();
+      ctx.moveTo(nameX - padding + capsuleRadius, nameY - 12);
+      ctx.lineTo(nameX + textWidth + padding - capsuleRadius, nameY - 12);
+      ctx.arc(nameX + textWidth + padding - capsuleRadius, nameY - 12 + capsuleRadius, capsuleRadius, -Math.PI/2, Math.PI/2);
+      ctx.lineTo(nameX - padding + capsuleRadius, nameY + 4);
+      ctx.arc(nameX - padding + capsuleRadius, nameY - 12 + capsuleRadius, capsuleRadius, Math.PI/2, -Math.PI/2);
+      ctx.fill();
+      
+      // Draw text
+      ctx.fillStyle = "#212121"; // MUI default text color
+      ctx.fillText(nameText, nameX, nameY);
+    });
+    
+    // Draw legend
+    drawLegend(ctx);
+  }, [simulator, islands, time, showOrbits, showTrails, trailLength, activeJourney, viewportScale, theme]);
+
+  // Helper function to draw the trail for an island
+  const drawIslandTrail = (ctx: CanvasRenderingContext2D, island: Island): void => {
+    // Generate future position points
+    const futureTrail: Position[] = [];
+    const tickPoints: Position[] = [];
+    
+    // Calculate 30 days into the future with 100 points per day
+    const pointsPerDay = 100;
+    const totalDays = trailLength / 1000; // 30 days
+    const totalPoints = totalDays * pointsPerDay;
+    
+    for (let i = 0; i <= totalPoints; i++) {
+      const futureTime = time + (i * trailLength / totalPoints);
+      const pos = simulator.calculatePosition(island, futureTime);
+      futureTrail.push({ 
+        x: pos.x * viewportScale + centerXRef.current, 
+        y: pos.y * viewportScale + centerYRef.current, 
+        time: futureTime 
+      });
+      
+      // Add tick mark points every 5 days
+      if (i % (5 * pointsPerDay) === 0 && i > 0) {
+        tickPoints.push({ 
+          x: pos.x * viewportScale + centerXRef.current, 
+          y: pos.y * viewportScale + centerYRef.current, 
+          time: futureTime 
+        });
+      }
+    }
+    
+    // Draw the future trail
+    if (futureTrail.length >= 2) {
+      ctx.strokeStyle = island.color;
+      ctx.lineWidth = 2.5;
+      ctx.globalAlpha = 0.6;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      
+      ctx.beginPath();
+      ctx.moveTo(futureTrail[0].x, futureTrail[0].y);
+      
+      for (let i = 1; i < futureTrail.length; i++) {
+        ctx.lineTo(futureTrail[i].x, futureTrail[i].y);
+      }
+      
+      ctx.stroke();
+      
+      // Draw tick marks - more modern style
+      ctx.fillStyle = island.color;
+      tickPoints.forEach((point, i) => {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Add day number label with better typography
+        const dayNumber = ((i + 1) * 5).toString();
+        ctx.font = "bold 11px Roboto, Arial, sans-serif";
+        ctx.fillText(dayNumber, point.x + 6, point.y - 6);
+      });
+      
+      ctx.globalAlpha = 1;
+    }
+  };
+  
+  // Helper function to draw the active journey
+  const drawJourney = (ctx: CanvasRenderingContext2D): void => {
+    if (!activeJourney) return;
+    
+    const sourceIsland = islands.find(island => island.id === activeJourney.sourceId);
+    const destIsland = islands.find(island => island.id === activeJourney.destinationId);
+    
+    if (sourceIsland && destIsland) {
+      // Draw the journey path
+      ctx.strokeStyle = "#795548"; // MUI brown color
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([6, 4]); // Dashed line with MUI styling
+      ctx.globalAlpha = 0.75;
+      
+      ctx.beginPath();
+      const startPoint = activeJourney.path[0];
+      ctx.moveTo(
+        startPoint.x * viewportScale + centerXRef.current, 
+        startPoint.y * viewportScale + centerYRef.current
+      );
+      
+      for (let i = 1; i < activeJourney.path.length; i++) {
+        const point = activeJourney.path[i];
+        ctx.lineTo(
+          point.x * viewportScale + centerXRef.current, 
+          point.y * viewportScale + centerYRef.current
+        );
+      }
+      
+      ctx.stroke();
+      ctx.setLineDash([]); // Reset dash
+      
+      // Draw destination marker (where the island will be at arrival)
+      const destPos = simulator.calculatePosition(destIsland, activeJourney.arrivalTime);
+      ctx.fillStyle = "#f44336"; // MUI red
+      ctx.beginPath();
+      ctx.arc(
+        destPos.x * viewportScale + centerXRef.current, 
+        destPos.y * viewportScale + centerYRef.current, 
+        8, 0, 2 * Math.PI
+      );
+      ctx.fill();
+      
+      // Draw time markers along the path
+      ctx.fillStyle = "#795548"; // MUI brown
+      ctx.font = "bold 11px Roboto, Arial, sans-serif";
+      
+      // Show one marker for each day of the journey
+      const journeyDays = Math.ceil(activeJourney.duration);
+      
+      if (journeyDays > 0) {
+        for (let day = 1; day <= journeyDays; day++) {
+          // Calculate what percentage of the journey this day represents
+          const t = day / activeJourney.duration;
+          // Find the corresponding index in the path array
+          const markerIndex = Math.min(Math.floor(t * (activeJourney.path.length - 1)), activeJourney.path.length - 1);
+          const marker = activeJourney.path[markerIndex];
+          
+          ctx.beginPath();
+          ctx.arc(
+            marker.x * viewportScale + centerXRef.current, 
+            marker.y * viewportScale + centerYRef.current, 
+            4, 0, 2 * Math.PI
+          );
+          ctx.fill();
+          
+          // Add day label with better typography
+          ctx.globalAlpha = 0.85;
+          ctx.fillText(`D+${day}`, 
+            marker.x * viewportScale + centerXRef.current + 6, 
+            marker.y * viewportScale + centerYRef.current - 6
+          );
+        }
+      }
+      
+      ctx.globalAlpha = 1;
+    }
+  };
+  
+  // Draw legend with island information
+  const drawLegend = (ctx: CanvasRenderingContext2D): void => {
+    const visibleIslands = islands.filter(island => island.visible);
+    if (visibleIslands.length === 0) return;
+    
+    // MUI-styled legend with more rounded corners and subtle shadow
+    const padding = 16;
+    const lineHeight = 32;
+    
+    // Calculate legend height based on content
+    let legendHeight = visibleIslands.length * lineHeight + padding * 2;
+    
+    // Add space for journey info if active
+    if (activeJourney) {
+      legendHeight += lineHeight * 2;
+    }
+    
+    const legendWidth = 220;
+    const legendX = 24;
+    const legendY = 24;
+    
+    // Draw legend background with rounded corners and subtle shadow
+    ctx.save();
+    
+    // Draw shadow
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+    
+    // Draw rounded background
+    ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+    ctx.beginPath();
+    const radius = 8;
+    ctx.moveTo(legendX + radius, legendY);
+    ctx.lineTo(legendX + legendWidth - radius, legendY);
+    ctx.quadraticCurveTo(legendX + legendWidth, legendY, legendX + legendWidth, legendY + radius);
+    ctx.lineTo(legendX + legendWidth, legendY + legendHeight - radius);
+    ctx.quadraticCurveTo(legendX + legendWidth, legendY + legendHeight, legendX + legendWidth - radius, legendY + legendHeight);
+    ctx.lineTo(legendX + radius, legendY + legendHeight);
+    ctx.quadraticCurveTo(legendX, legendY + legendHeight, legendX, legendY + legendHeight - radius);
+    ctx.lineTo(legendX, legendY + radius);
+    ctx.quadraticCurveTo(legendX, legendY, legendX + radius, legendY);
+    ctx.closePath();
+    ctx.fill();
+    
+    ctx.restore();
+    
+    // Add legend title
+    ctx.fillStyle = "#212121"; // MUI default text color
+    ctx.font = "bold 14px Roboto, Arial, sans-serif"; // MUI typography
+    ctx.fillText("Island Information", legendX + padding, legendY + padding + 4);
+    
+    // Add a subtle divider
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.12)"; // MUI divider color
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(legendX + padding, legendY + padding + 12);
+    ctx.lineTo(legendX + legendWidth - padding, legendY + padding + 12);
+    ctx.stroke();
+    
+    // Draw island information
+    visibleIslands.forEach((island, index) => {
+      const y = legendY + padding + 24 + index * lineHeight; // Add extra space for title and divider
+      const orbitalPeriod = simulator.calculateOrbitalPeriod(island.cycles);
+      const { dayInCycle, percentage } = simulator.calculateOrbitalPosition(island.cycles);
+      const velocity = simulator.calculateVelocity(island);
+      
+      // Draw color indicator with MUI-style pill shape
+      ctx.fillStyle = island.color;
+      ctx.beginPath();
+      const pillWidth = 24;
+      const pillHeight = 12;
+      const pillRadius = pillHeight / 2;
+      const pillX = legendX + padding + 5;
+      const pillY = y + 2;
+      
+      ctx.moveTo(pillX + pillRadius, pillY);
+      ctx.lineTo(pillX + pillWidth - pillRadius, pillY);
+      ctx.arc(pillX + pillWidth - pillRadius, pillY + pillRadius, pillRadius, -Math.PI/2, Math.PI/2);
+      ctx.lineTo(pillX + pillRadius, pillY + pillHeight);
+      ctx.arc(pillX + pillRadius, pillY + pillRadius, pillRadius, Math.PI/2, -Math.PI/2);
+      ctx.fill();
+      
+      // Draw island name
+      ctx.fillStyle = "#212121"; // MUI default text color
+      ctx.font = "500 13px Roboto, Arial, sans-serif"; // MUI typography - medium weight
+      ctx.fillText(island.name, legendX + padding + pillWidth + 10, y + 4);
+      
+      // Draw day and speed info with MUI typography style
+      ctx.font = "400 12px Roboto, Arial, sans-serif"; // MUI typography - regular weight
+      ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; // MUI secondary text color
+      ctx.fillText(
+        `Day ${dayInCycle.toFixed(0)} / ${orbitalPeriod.toFixed(0)} (${velocity.speed.toFixed(0)} mi/d)`, 
+        legendX + padding + pillWidth + 10, 
+        y + 20
+      );
+    });
+    
+    // Draw journey information if active
+    if (activeJourney) {
+      const sourceIsland = islands.find(island => island.id === activeJourney.sourceId);
+      const destIsland = islands.find(island => island.id === activeJourney.destinationId);
+      
+      if (sourceIsland && destIsland) {
+        const y = legendY + padding + 24 + visibleIslands.length * lineHeight;
+        
+        // Add a subtle divider before journey info
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.12)"; // MUI divider color
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(legendX + padding, y - 8);
+        ctx.lineTo(legendX + legendWidth - padding, y - 8);
+        ctx.stroke();
+        
+        // Draw journey title with MUI typography style
+        ctx.fillStyle = "#795548"; // MUI brown color
+        ctx.font = "500 13px Roboto, Arial, sans-serif"; // MUI typography - medium weight
+        ctx.fillText("Journey Plan", legendX + padding, y + 4);
+        
+        // Draw journey details with MUI typography style
+        ctx.font = "400 12px Roboto, Arial, sans-serif"; // MUI typography - regular weight
+        ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; // MUI secondary text color
+        ctx.fillText(
+          `${sourceIsland.name} → ${destIsland.name} (${activeJourney.speed} mph)`, 
+          legendX + padding, 
+          y + 20
+        );
+        ctx.fillText(
+          `Distance: ${activeJourney.distance.toFixed(0)} mi, Duration: ${activeJourney.duration.toFixed(1)} days`, 
+          legendX + padding, 
+          y + 36
+        );
+      }
+    }
+  };
+  
+  return (
+    <CanvasContainer ref={canvasContainerRef}>
+      <canvas 
+        ref={canvasRef} 
+        style={{ width: '100%', height: '100%' }}
+      />
+    </CanvasContainer>
+  );
+};
+
+export default SimulationCanvas; 
