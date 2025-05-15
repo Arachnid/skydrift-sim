@@ -6,9 +6,18 @@ import {
   Grid,
   Paper,
   TextField,
-  Typography
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton
 } from '@mui/material';
 import UpdateIcon from '@mui/icons-material/Update';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { Island, Journey } from '../utils/sim';
 
 interface JourneyPlannerProps {
@@ -24,6 +33,11 @@ interface JourneyPlannerProps {
   clearJourney: () => void;
   setSourceIslandIdAndCalculate: (id: number | null) => void;
   setDestinationIslandIdAndCalculate: (id: number | null) => void;
+  activeJourneys: Journey[];
+  addActiveJourney: () => void;
+  deleteJourney: (id: number) => void;
+  simulator: any;
+  time: number;
 }
 
 const JourneyPlanner: React.FC<JourneyPlannerProps> = ({
@@ -36,12 +50,28 @@ const JourneyPlanner: React.FC<JourneyPlannerProps> = ({
   activeJourney,
   clearJourney,
   setSourceIslandIdAndCalculate,
-  setDestinationIslandIdAndCalculate
+  setDestinationIslandIdAndCalculate,
+  activeJourneys,
+  addActiveJourney,
+  deleteJourney,
+  simulator,
+  time
 }) => {
   const handleSpeedChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newSpeed = Math.max(1, parseInt(e.target.value) || 0);
     setJourneySpeed(newSpeed);
   }, [setJourneySpeed]);
+
+  // Helper to get island name
+  const getIslandName = (islandId: number): string => {
+    const island = islands.find(i => i.id === islandId);
+    return island ? island.name : 'Unknown';
+  };
+
+  // Helper to get journey progress
+  const getJourneyProgress = (journey: Journey) => {
+    return simulator.getJourneyProgress(journey);
+  };
 
   return (
     <Paper variant="outlined" sx={{ p: 3 }}>
@@ -49,7 +79,7 @@ const JourneyPlanner: React.FC<JourneyPlannerProps> = ({
         <Typography variant="subtitle1" fontWeight="medium">
           Journey Planner
         </Typography>
-        {isPlaying && activeJourney && (
+        {isPlaying && (
           <Chip
             color="primary"
             size="small"
@@ -206,14 +236,24 @@ const JourneyPlanner: React.FC<JourneyPlannerProps> = ({
             />
             
             {activeJourney ? (
-              <Button
-                variant="outlined"
-                color="inherit"
-                onClick={clearJourney}
-                sx={{ mt: 'auto' }}
-              >
-                Clear Journey
-              </Button>
+              <Box sx={{ mt: 'auto', display: 'flex', gap: 2 }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<AddIcon />}
+                  onClick={addActiveJourney}
+                  sx={{ flexGrow: 1 }}
+                >
+                  Add Journey
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="inherit"
+                  onClick={clearJourney}
+                >
+                  Clear
+                </Button>
+              </Box>
             ) : (
               <Typography 
                 variant="body2" 
@@ -233,11 +273,11 @@ const JourneyPlanner: React.FC<JourneyPlannerProps> = ({
           </Paper>
         </Grid>
         
-        {activeJourney && (
+        {activeJourney && activeJourney.status === 'predicted' && (
           <Grid size={{ xs: 12 }}>
             <Box sx={{ mt: 2, p: 2, borderTop: 1, borderColor: 'divider' }}>
               <Typography variant="subtitle2" gutterBottom>
-                Journey Details
+                Predicted Route
                 {isPlaying && (
                   <Chip
                     color="info"
@@ -278,6 +318,68 @@ const JourneyPlanner: React.FC<JourneyPlannerProps> = ({
                   <Typography variant="body2">{(activeJourney.arrivalTime / 1000).toFixed(1)}</Typography>
                 </Grid>
               </Grid>
+            </Box>
+          </Grid>
+        )}
+        
+        {activeJourneys.length > 0 && (
+          <Grid size={{ xs: 12 }}>
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Active Journeys
+                {isPlaying && (
+                  <Chip
+                    color="success"
+                    size="small"
+                    icon={<UpdateIcon />}
+                    label="Live"
+                    sx={{ ml: 1, height: 20, '& .MuiChip-label': { px: 1 } }}
+                  />
+                )}
+              </Typography>
+              
+              <TableContainer component={Paper} variant="outlined">
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>From</TableCell>
+                      <TableCell>To</TableCell>
+                      <TableCell>Progress</TableCell>
+                      <TableCell>ETA (days)</TableCell>
+                      <TableCell>Distance Left</TableCell>
+                      <TableCell>Speed</TableCell>
+                      <TableCell>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {activeJourneys.map(journey => {
+                      if (journey.status === 'completed') return null;
+                      
+                      const progress = getJourneyProgress(journey);
+                      
+                      return (
+                        <TableRow key={journey.id}>
+                          <TableCell>{getIslandName(journey.sourceId)}</TableCell>
+                          <TableCell>{getIslandName(journey.destinationId)}</TableCell>
+                          <TableCell>{`${progress.progress.toFixed(0)}%`}</TableCell>
+                          <TableCell>{progress.remainingTime.toFixed(1)}</TableCell>
+                          <TableCell>{`${progress.remainingDistance.toFixed(0)} mi`}</TableCell>
+                          <TableCell>{`${journey.speed} mph`}</TableCell>
+                          <TableCell>
+                            <IconButton 
+                              size="small" 
+                              color="error"
+                              onClick={() => deleteJourney(journey.id)}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </Box>
           </Grid>
         )}

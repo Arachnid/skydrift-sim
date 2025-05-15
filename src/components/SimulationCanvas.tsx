@@ -15,7 +15,7 @@ const CanvasContainer = styled(Box)(({ theme }) => ({
   borderRadius: theme.shape.borderRadius,
   width: '100%',
   // Fix height to prevent excessive vertical size
-  height: 'min(calc(100vh - 350px), 1200px)', // Use the smaller of these two values
+  height: 'min(calc(100vh - 350px), 800px)', // Use the smaller of these two values
   minHeight: '400px'
 }));
 
@@ -133,7 +133,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
           const radius = simulator.calculateRenderRadius(cycle.period) * viewportScale;
           
           ctx.beginPath();
-          ctx.arc(center.x * viewportScale + centerXRef.current, center.y * viewportScale + centerYRef.current, radius, 0, 2 * Math.PI);
+          ctx.arc(center.x * viewportScale + centerXRef.current, center.y * viewportScale + centerXRef.current, radius, 0, 2 * Math.PI);
           ctx.stroke();
         }
         
@@ -144,10 +144,10 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
         
         // Draw lines connecting the epicycle centers
         ctx.beginPath();
-        ctx.moveTo(positions[0].x * viewportScale + centerXRef.current, positions[0].y * viewportScale + centerYRef.current);
+        ctx.moveTo(positions[0].x * viewportScale + centerXRef.current, positions[0].y * viewportScale + centerXRef.current);
         
         for (let i = 1; i < positions.length; i++) {
-          ctx.lineTo(positions[i].x * viewportScale + centerXRef.current, positions[i].y * viewportScale + centerYRef.current);
+          ctx.lineTo(positions[i].x * viewportScale + centerXRef.current, positions[i].y * viewportScale + centerXRef.current);
         }
         
         ctx.stroke();
@@ -166,9 +166,17 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       });
     }
     
-    // Draw active journey path with MUI styling
-    if (activeJourney && activeJourney.path.length > 1) {
-      drawJourney(ctx);
+    // Draw active journeys
+    const activeJourneys = simulator.getActiveJourneys();
+    activeJourneys.forEach(journey => {
+      if (journey.status === 'active') {
+        drawActiveJourney(ctx, journey);
+      }
+    });
+    
+    // Draw predicted journey path with MUI styling - only if it's actually a prediction
+    if (activeJourney && activeJourney.status === 'predicted' && activeJourney.path.length > 1) {
+      drawPredictedJourney(ctx, activeJourney);
     }
     
     // Draw islands
@@ -187,7 +195,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       
       ctx.fillStyle = island.color;
       ctx.beginPath();
-      ctx.arc(position.x * viewportScale + centerXRef.current, position.y * viewportScale + centerYRef.current, island.radius, 0, 2 * Math.PI);
+      ctx.arc(position.x * viewportScale + centerXRef.current, position.y * viewportScale + centerXRef.current, island.radius, 0, 2 * Math.PI);
       ctx.fill();
       ctx.restore();
       
@@ -197,7 +205,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       const nameText = island.name;
       const textWidth = ctx.measureText(nameText).width;
       const nameX = position.x * viewportScale + centerXRef.current + 12;
-      const nameY = position.y * viewportScale + centerYRef.current - 8;
+      const nameY = position.y * viewportScale + centerXRef.current - 8;
       
       // Draw background capsule for label
       ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
@@ -237,7 +245,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       const pos = simulator.calculatePosition(island, futureTime);
       futureTrail.push({ 
         x: pos.x * viewportScale + centerXRef.current, 
-        y: pos.y * viewportScale + centerYRef.current, 
+        y: pos.y * viewportScale + centerXRef.current, 
         time: futureTime 
       });
       
@@ -245,7 +253,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       if (i % (5 * pointsPerDay) === 0 && i > 0) {
         tickPoints.push({ 
           x: pos.x * viewportScale + centerXRef.current, 
-          y: pos.y * viewportScale + centerYRef.current, 
+          y: pos.y * viewportScale + centerXRef.current, 
           time: futureTime 
         });
       }
@@ -285,12 +293,99 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
     }
   };
   
-  // Helper function to draw the active journey
-  const drawJourney = (ctx: CanvasRenderingContext2D): void => {
-    if (!activeJourney) return;
+  // Helper function to draw active journeys
+  const drawActiveJourney = (ctx: CanvasRenderingContext2D, journey: Journey): void => {
+    const sourceIsland = islands.find(island => island.id === journey.sourceId);
+    const destIsland = islands.find(island => island.id === journey.destinationId);
     
-    const sourceIsland = islands.find(island => island.id === activeJourney.sourceId);
-    const destIsland = islands.find(island => island.id === activeJourney.destinationId);
+    if (sourceIsland && destIsland) {
+      // Get the current position along the journey path
+      const currentPosition = simulator.getCurrentJourneyPosition(journey);
+      
+      // Get the destination position at arrival time
+      const destPos = simulator.calculatePosition(destIsland, journey.arrivalTime);
+      
+      // Draw the future journey path
+      const futurePath = simulator.getFutureJourneyPath(journey);
+      
+      if (futurePath.length > 1) {
+        // Draw the future path
+        ctx.strokeStyle = "#2e7d32"; // MUI green
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([6, 4]); // Dashed line
+        ctx.globalAlpha = 0.75;
+        
+        ctx.beginPath();
+        ctx.moveTo(
+          currentPosition.x * viewportScale + centerXRef.current, 
+          currentPosition.y * viewportScale + centerXRef.current
+        );
+        
+        for (let i = 1; i < futurePath.length; i++) {
+          const point = futurePath[i];
+          ctx.lineTo(
+            point.x * viewportScale + centerXRef.current, 
+            point.y * viewportScale + centerXRef.current
+          );
+        }
+        
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      
+      // Draw current position marker
+      ctx.fillStyle = "#2e7d32"; // MUI green
+      ctx.beginPath();
+      ctx.arc(
+        currentPosition.x * viewportScale + centerXRef.current, 
+        currentPosition.y * viewportScale + centerXRef.current, 
+        6, 0, 2 * Math.PI
+      );
+      ctx.fill();
+      
+      // Draw destination marker
+      ctx.fillStyle = "#f44336"; // MUI red
+      ctx.beginPath();
+      ctx.arc(
+        destPos.x * viewportScale + centerXRef.current, 
+        destPos.y * viewportScale + centerXRef.current, 
+        8, 0, 2 * Math.PI
+      );
+      ctx.fill();
+      
+      // Draw journey progress label
+      const progress = simulator.getJourneyProgress(journey);
+      ctx.font = "bold 12px Roboto, Arial, sans-serif";
+      ctx.fillStyle = "#2e7d32"; // MUI green
+      
+      const labelText = `${destIsland.name}: ${progress.progress.toFixed(0)}%`;
+      const labelX = currentPosition.x * viewportScale + centerXRef.current + 10;
+      const labelY = currentPosition.y * viewportScale + centerXRef.current - 10;
+      
+      // Draw label background
+      const textWidth = ctx.measureText(labelText).width;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      const padding = 4;
+      const capsuleRadius = 8;
+      
+      ctx.beginPath();
+      ctx.moveTo(labelX - padding + capsuleRadius, labelY - 12);
+      ctx.lineTo(labelX + textWidth + padding - capsuleRadius, labelY - 12);
+      ctx.arc(labelX + textWidth + padding - capsuleRadius, labelY - 12 + capsuleRadius, capsuleRadius, -Math.PI/2, Math.PI/2);
+      ctx.lineTo(labelX - padding + capsuleRadius, labelY + 4);
+      ctx.arc(labelX - padding + capsuleRadius, labelY - 12 + capsuleRadius, capsuleRadius, Math.PI/2, -Math.PI/2);
+      ctx.fill();
+      
+      // Draw label text
+      ctx.fillStyle = "#2e7d32"; // MUI green
+      ctx.fillText(labelText, labelX, labelY);
+    }
+  };
+  
+  // Helper function to draw the predicted journey
+  const drawPredictedJourney = (ctx: CanvasRenderingContext2D, journey: Journey): void => {
+    const sourceIsland = islands.find(island => island.id === journey.sourceId);
+    const destIsland = islands.find(island => island.id === journey.destinationId);
     
     if (sourceIsland && destIsland) {
       // Draw the journey path
@@ -300,17 +395,17 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       ctx.globalAlpha = 0.75;
       
       ctx.beginPath();
-      const startPoint = activeJourney.path[0];
+      const startPoint = journey.path[0];
       ctx.moveTo(
         startPoint.x * viewportScale + centerXRef.current, 
-        startPoint.y * viewportScale + centerYRef.current
+        startPoint.y * viewportScale + centerXRef.current
       );
       
-      for (let i = 1; i < activeJourney.path.length; i++) {
-        const point = activeJourney.path[i];
+      for (let i = 1; i < journey.path.length; i++) {
+        const point = journey.path[i];
         ctx.lineTo(
           point.x * viewportScale + centerXRef.current, 
-          point.y * viewportScale + centerYRef.current
+          point.y * viewportScale + centerXRef.current
         );
       }
       
@@ -318,12 +413,12 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       ctx.setLineDash([]); // Reset dash
       
       // Draw destination marker (where the island will be at arrival)
-      const destPos = simulator.calculatePosition(destIsland, activeJourney.arrivalTime);
+      const destPos = simulator.calculatePosition(destIsland, journey.arrivalTime);
       ctx.fillStyle = "#f44336"; // MUI red
       ctx.beginPath();
       ctx.arc(
         destPos.x * viewportScale + centerXRef.current, 
-        destPos.y * viewportScale + centerYRef.current, 
+        destPos.y * viewportScale + centerXRef.current, 
         8, 0, 2 * Math.PI
       );
       ctx.fill();
@@ -333,20 +428,20 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       ctx.font = "bold 11px Roboto, Arial, sans-serif";
       
       // Show one marker for each day of the journey
-      const journeyDays = Math.ceil(activeJourney.duration);
+      const journeyDays = Math.ceil(journey.duration);
       
       if (journeyDays > 0) {
         for (let day = 1; day <= journeyDays; day++) {
           // Calculate what percentage of the journey this day represents
-          const t = day / activeJourney.duration;
+          const t = day / journey.duration;
           // Find the corresponding index in the path array
-          const markerIndex = Math.min(Math.floor(t * (activeJourney.path.length - 1)), activeJourney.path.length - 1);
-          const marker = activeJourney.path[markerIndex];
+          const markerIndex = Math.min(Math.floor(t * (journey.path.length - 1)), journey.path.length - 1);
+          const marker = journey.path[markerIndex];
           
           ctx.beginPath();
           ctx.arc(
             marker.x * viewportScale + centerXRef.current, 
-            marker.y * viewportScale + centerYRef.current, 
+            marker.y * viewportScale + centerXRef.current, 
             4, 0, 2 * Math.PI
           );
           ctx.fill();
@@ -355,7 +450,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
           ctx.globalAlpha = 0.85;
           ctx.fillText(`D+${day}`, 
             marker.x * viewportScale + centerXRef.current + 6, 
-            marker.y * viewportScale + centerYRef.current - 6
+            marker.y * viewportScale + centerXRef.current - 6
           );
         }
       }
@@ -369,18 +464,16 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
     const visibleIslands = islands.filter(island => island.visible);
     if (visibleIslands.length === 0) return;
     
+    // Get active journeys
+    const activeJourneys = simulator.getActiveJourneys();
+    
     // MUI-styled legend with more rounded corners and subtle shadow
     const padding = 16;
     const lineHeight = 32;
     
     // Calculate legend height based on content
     let legendHeight = visibleIslands.length * lineHeight + padding * 2;
-    
-    // Add space for journey info if active
-    if (activeJourney) {
-      legendHeight += lineHeight * 2;
-    }
-    
+        
     const legendWidth = 220;
     const legendX = 24;
     const legendY = 24;
@@ -462,43 +555,6 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
         y + 20
       );
     });
-    
-    // Draw journey information if active
-    if (activeJourney) {
-      const sourceIsland = islands.find(island => island.id === activeJourney.sourceId);
-      const destIsland = islands.find(island => island.id === activeJourney.destinationId);
-      
-      if (sourceIsland && destIsland) {
-        const y = legendY + padding + 24 + visibleIslands.length * lineHeight;
-        
-        // Add a subtle divider before journey info
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.12)"; // MUI divider color
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(legendX + padding, y - 8);
-        ctx.lineTo(legendX + legendWidth - padding, y - 8);
-        ctx.stroke();
-        
-        // Draw journey title with MUI typography style
-        ctx.fillStyle = "#795548"; // MUI brown color
-        ctx.font = "500 13px Roboto, Arial, sans-serif"; // MUI typography - medium weight
-        ctx.fillText("Journey Plan", legendX + padding, y + 4);
-        
-        // Draw journey details with MUI typography style
-        ctx.font = "400 12px Roboto, Arial, sans-serif"; // MUI typography - regular weight
-        ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; // MUI secondary text color
-        ctx.fillText(
-          `${sourceIsland.name} → ${destIsland.name} (${activeJourney.speed} mph)`, 
-          legendX + padding, 
-          y + 20
-        );
-        ctx.fillText(
-          `Distance: ${activeJourney.distance.toFixed(0)} mi, Duration: ${activeJourney.duration.toFixed(1)} days`, 
-          legendX + padding, 
-          y + 36
-        );
-      }
-    }
   };
   
   return (

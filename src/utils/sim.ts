@@ -20,14 +20,17 @@ export interface Position {
 
 // Add Journey interface
 export interface Journey {
+  id: number;         // Unique identifier for the journey
   sourceId: number;
   destinationId: number;
-  speed: number; // mph
-  path: Position[];
+  speed: number;      // mph
+  path: Position[];   // Full path from source to destination
   distance: number;
-  duration: number; // in days
+  duration: number;   // in days
+  startTime: number;  // simulation time when journey started
   arrivalTime: number; // simulation time of arrival
   isClockwise: boolean;
+  status: 'active' | 'completed' | 'predicted'; // Status of the journey
 }
 
 // Velocity interface
@@ -53,6 +56,7 @@ export default class SkydriftArchipelagoSimulator {
   private time: number = 0;
   private centerX: number = 400;
   private centerY: number = 400;
+  private activeJourneys: Journey[] = [];
 
   constructor(islands: Island[] = []) {
     this.islands = [...islands];
@@ -61,6 +65,101 @@ export default class SkydriftArchipelagoSimulator {
   // Get all islands
   getIslands(): Island[] {
     return [...this.islands];
+  }
+  
+  // Get active journeys
+  getActiveJourneys(): Journey[] {
+    return [...this.activeJourneys];
+  }
+  
+  // Add a journey to active journeys list
+  addJourney(journey: Journey): void {
+    // Make sure it's not a prediction
+    if (journey.status === 'predicted') {
+      journey.status = 'active';
+    }
+    journey.startTime = this.time;
+    this.activeJourneys.push({...journey});
+  }
+  
+  // Delete a journey
+  deleteJourney(journeyId: number): void {
+    this.activeJourneys = this.activeJourneys.filter(journey => journey.id !== journeyId);
+  }
+  
+  // Update journey statuses based on current time
+  updateJourneyStatuses(): Journey[] {
+    const updatedJourneys = this.activeJourneys.map(journey => {
+      // Check if journey is completed
+      if (journey.status === 'active' && this.time >= journey.arrivalTime) {
+        journey.status = 'completed';
+      }
+      return journey;
+    });
+    
+    this.activeJourneys = updatedJourneys;
+    return updatedJourneys;
+  }
+  
+  // Get current position along a journey path based on current time
+  getCurrentJourneyPosition(journey: Journey): Position {
+    if (journey.status === 'completed') {
+      // If completed, return the last point on the path
+      return journey.path[journey.path.length - 1];
+    }
+    
+    // Calculate the percentage of journey completed based on time
+    const elapsedTime = this.time - journey.startTime;
+    const totalJourneyTime = journey.arrivalTime - journey.startTime;
+    const journeyProgress = Math.min(1, Math.max(0, elapsedTime / totalJourneyTime));
+    
+    // Find the closest point in the path array
+    const pathIndex = Math.floor(journeyProgress * (journey.path.length - 1));
+    
+    return journey.path[pathIndex];
+  }
+  
+  // Get remaining distance and time for an active journey
+  getJourneyProgress(journey: Journey): { remainingDistance: number, remainingTime: number, progress: number } {
+    if (journey.status === 'completed') {
+      return { remainingDistance: 0, remainingTime: 0, progress: 100 };
+    }
+    
+    const elapsedTime = this.time - journey.startTime;
+    const totalJourneyTime = journey.arrivalTime - journey.startTime;
+    const journeyProgress = Math.min(1, Math.max(0, elapsedTime / totalJourneyTime));
+    
+    const remainingTime = Math.max(0, (journey.arrivalTime - this.time) / 1000); // in days
+    const remainingDistance = journey.distance * (1 - journeyProgress);
+    
+    return {
+      remainingDistance,
+      remainingTime,
+      progress: journeyProgress * 100
+    };
+  }
+  
+  // Draw only the segment of the journey path that's in the future
+  getFutureJourneyPath(journey: Journey): Position[] {
+    if (journey.status === 'completed') {
+      return [];
+    }
+    
+    // For a predicted journey, return the entire path
+    if (journey.status === 'predicted') {
+      return journey.path;
+    }
+    
+    // Calculate the percentage of journey completed based on time
+    const elapsedTime = this.time - journey.startTime;
+    const totalJourneyTime = journey.arrivalTime - journey.startTime;
+    const journeyProgress = Math.min(1, Math.max(0, elapsedTime / totalJourneyTime));
+    
+    // Find the closest point in the path array
+    const startIndex = Math.floor(journeyProgress * (journey.path.length - 1));
+    
+    // Return only the future part of the path
+    return journey.path.slice(startIndex);
   }
   
   // Set islands
@@ -389,7 +488,7 @@ export default class SkydriftArchipelagoSimulator {
   }
   
   // Calculate journey between two islands
-  calculateJourney(sourceIslandId: number, destinationIslandId: number, journeySpeed: number): Journey | null {
+  calculateJourney(sourceIslandId: number, destinationIslandId: number, journeySpeed: number, isPrediction: boolean = false): Journey | null {
     if (journeySpeed <= 0) {
       return null;
     }
@@ -502,14 +601,17 @@ export default class SkydriftArchipelagoSimulator {
     
     // Create the journey object
     const journey: Journey = {
+      id: Date.now(),
       sourceId: sourceIslandId,
       destinationId: destinationIslandId,
       speed: journeySpeed,
       path: [],
       distance: distance,
       duration: duration,
+      startTime: this.time,
       arrivalTime: this.time + (duration * 1000),
-      isClockwise: this.normalizeAngle(destPolar.theta - sourcePolar.theta) > 0
+      isClockwise: this.normalizeAngle(destPolar.theta - sourcePolar.theta) > 0,
+      status: isPrediction ? 'predicted' : 'active'
     };
     
     // Calculate the final path with more detail

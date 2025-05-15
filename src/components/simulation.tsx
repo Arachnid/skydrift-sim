@@ -201,6 +201,7 @@ const SkydriftArchipelagoSimulation = () => {
   const [destinationIslandId, setDestinationIslandId] = useState<number | null>(null);
   const [journeySpeed, setJourneySpeed] = useState(8); // mph
   const [activeJourney, setActiveJourney] = useState<Journey | null>(null);
+  const [activeJourneys, setActiveJourneys] = useState<Journey[]>([]);
   
   // Add state for tab management
   const [activeTab, setActiveTab] = useState<'island' | 'journey'>('island');
@@ -257,6 +258,18 @@ const SkydriftArchipelagoSimulation = () => {
       setTime(prevTime => {
         const newTime = prevTime + deltaTime * speed;
         simulatorRef.current.setTime(newTime); // Update simulator time
+        
+        // Update active journey statuses
+        const updatedJourneys = simulatorRef.current.updateJourneyStatuses();
+        
+        // Filter out completed journeys
+        const activeOnes = updatedJourneys.filter(journey => journey.status === 'active');
+        
+        // Update state if there are any changes in journey statuses
+        if (updatedJourneys.length !== activeOnes.length) {
+          setActiveJourneys([...activeOnes]);
+        }
+        
         return newTime;
       });
       
@@ -278,6 +291,31 @@ const SkydriftArchipelagoSimulation = () => {
   useEffect(() => {
     simulatorRef.current.setTime(time);
   }, [time]);
+  
+  // Add the predicted journey to active journeys
+  const addActiveJourney = useCallback(() => {
+    if (activeJourney) {
+      simulatorRef.current.addJourney(activeJourney);
+      setActiveJourneys([...simulatorRef.current.getActiveJourneys()]);
+      
+      // Clear the active journey and selection
+      setActiveJourney(null);
+      setSourceIslandId(null);
+      setDestinationIslandId(null);
+      
+      // Clear any pending journey calculations
+      if (throttleRef.current !== null) {
+        clearTimeout(throttleRef.current);
+        throttleRef.current = null;
+      }
+    }
+  }, [activeJourney]);
+  
+  // Delete a journey by ID
+  const deleteJourney = useCallback((journeyId: number) => {
+    simulatorRef.current.deleteJourney(journeyId);
+    setActiveJourneys([...simulatorRef.current.getActiveJourneys()]);
+  }, []);
   
   // Update clearJourney to remove drawCanvas call
   const clearJourney = () => {
@@ -441,8 +479,8 @@ const SkydriftArchipelagoSimulation = () => {
 
   // Memoize the journey calculation function for better performance
   const calculateJourneyWithIds = useCallback((srcId: number, destId: number) => {
-    // Let the simulator calculate the journey
-    const journey = simulatorRef.current.calculateJourney(srcId, destId, journeySpeed);
+    // Let the simulator calculate the journey as a prediction
+    const journey = simulatorRef.current.calculateJourney(srcId, destId, journeySpeed, true);
     
     if (journey) {
       setActiveJourney(journey);
@@ -537,7 +575,7 @@ const SkydriftArchipelagoSimulation = () => {
         }
         
         // Continue animation loop
-        animationJourneyRef.current = requestAnimationFrame(animateJourney);
+        animationFrameRef.current = requestAnimationFrame(animateJourney);
       };
       
       // Start animation
@@ -577,6 +615,23 @@ const SkydriftArchipelagoSimulation = () => {
           calculateSystemPeriod={() => simulatorRef.current.calculateSystemPeriod()}
           resetSimulation={resetSimulation}
           jumpTime={jumpTime}
+        />
+
+        {/* Canvas */}
+        <SimulationCanvas
+          simulator={simulatorRef.current}
+          islands={islands}
+          time={time}
+          showOrbits={showOrbits}
+          showTrails={showTrails}
+          trailLength={trailLength}
+          activeJourney={activeJourney}
+          viewportScale={viewportScale}
+          onResize={(width, height) => {
+            setCanvasSize({ width, height });
+            setCenterX(width / 2);
+            setCenterY(height / 2);
+          }}
         />
 
         {/* Tab Navigation */}
@@ -636,26 +691,14 @@ const SkydriftArchipelagoSimulation = () => {
             clearJourney={clearJourney}
             setSourceIslandIdAndCalculate={setSourceIslandIdAndCalculate}
             setDestinationIslandIdAndCalculate={setDestinationIslandIdAndCalculate}
+            activeJourneys={activeJourneys}
+            addActiveJourney={addActiveJourney}
+            deleteJourney={deleteJourney}
+            simulator={simulatorRef.current}
+            time={time}
           />
         )}
       </Paper>
-      
-      {/* Canvas */}
-      <SimulationCanvas
-        simulator={simulatorRef.current}
-        islands={islands}
-        time={time}
-        showOrbits={showOrbits}
-        showTrails={showTrails}
-        trailLength={trailLength}
-        activeJourney={activeJourney}
-        viewportScale={viewportScale}
-        onResize={(width, height) => {
-          setCanvasSize({ width, height });
-          setCenterX(width / 2);
-          setCenterY(height / 2);
-        }}
-      />
     </Box>
   );
 };
