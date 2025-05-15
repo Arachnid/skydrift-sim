@@ -57,7 +57,7 @@ const SkydriftArchipelagoSimulation = () => {
   // Viewport scaling for rendering
   const [viewportScale, setViewportScale] = useState(1);
   
-  const SIMULATION_SPEED = 5;
+  const SIMULATION_SPEED = 1;
   
   // Pleasing color palette
   const colorPalette = [

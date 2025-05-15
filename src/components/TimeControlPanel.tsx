@@ -125,18 +125,18 @@ const TimeControlPanel: React.FC<TimeControlPanelProps> = ({
             label="Show Trails"
           />
           
-          <Box sx={{ width: 180, display: 'flex', alignItems: 'center' }}>
+          <Box sx={{ width: 320, display: 'flex', alignItems: 'center' }}>
             <Typography variant="body2" sx={{ mr: 1 }}>Speed:</Typography>
             <Slider
-              min={1}
-              max={50}
-              step={1}
+              min={0.1}
+              max={10}
+              step={0.1}
               value={speed}
               onChange={(_, value) => setSpeed(value as number)}
               sx={{ mx: 1 }}
             />
-            <Typography variant="body2" sx={{ ml: 1, minWidth: 36 }}>
-              {speed.toFixed(1)}x
+            <Typography variant="body2" sx={{ ml: 1, minWidth: 100 }}>
+              {speed.toFixed(1)} days/sec
             </Typography>
           </Box>
         </Stack>
