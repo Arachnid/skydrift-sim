@@ -133,7 +133,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
           const radius = simulator.calculateRenderRadius(cycle.period) * viewportScale;
           
           ctx.beginPath();
-          ctx.arc(center.x * viewportScale + centerXRef.current, center.y * viewportScale + centerXRef.current, radius, 0, 2 * Math.PI);
+          ctx.arc(center.x * viewportScale + centerXRef.current, center.y * viewportScale + centerYRef.current, radius, 0, 2 * Math.PI);
           ctx.stroke();
         }
         
@@ -144,10 +144,10 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
         
         // Draw lines connecting the epicycle centers
         ctx.beginPath();
-        ctx.moveTo(positions[0].x * viewportScale + centerXRef.current, positions[0].y * viewportScale + centerXRef.current);
+        ctx.moveTo(positions[0].x * viewportScale + centerXRef.current, positions[0].y * viewportScale + centerYRef.current);
         
         for (let i = 1; i < positions.length; i++) {
-          ctx.lineTo(positions[i].x * viewportScale + centerXRef.current, positions[i].y * viewportScale + centerXRef.current);
+          ctx.lineTo(positions[i].x * viewportScale + centerXRef.current, positions[i].y * viewportScale + centerYRef.current);
         }
         
         ctx.stroke();
@@ -195,7 +195,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       
       ctx.fillStyle = island.color;
       ctx.beginPath();
-      ctx.arc(position.x * viewportScale + centerXRef.current, position.y * viewportScale + centerXRef.current, island.radius, 0, 2 * Math.PI);
+      ctx.arc(position.x * viewportScale + centerXRef.current, position.y * viewportScale + centerYRef.current, island.radius, 0, 2 * Math.PI);
       ctx.fill();
       ctx.restore();
       
@@ -205,7 +205,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       const nameText = island.name;
       const textWidth = ctx.measureText(nameText).width;
       const nameX = position.x * viewportScale + centerXRef.current + 12;
-      const nameY = position.y * viewportScale + centerXRef.current - 8;
+      const nameY = position.y * viewportScale + centerYRef.current - 8;
       
       // Draw background capsule for label
       ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
@@ -245,7 +245,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       const pos = simulator.calculatePosition(island, futureTime);
       futureTrail.push({ 
         x: pos.x * viewportScale + centerXRef.current, 
-        y: pos.y * viewportScale + centerXRef.current, 
+        y: pos.y * viewportScale + centerYRef.current, 
         time: futureTime 
       });
       
@@ -253,7 +253,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       if (i % (5 * pointsPerDay) === 0 && i > 0) {
         tickPoints.push({ 
           x: pos.x * viewportScale + centerXRef.current, 
-          y: pos.y * viewportScale + centerXRef.current, 
+          y: pos.y * viewportScale + centerYRef.current, 
           time: futureTime 
         });
       }
@@ -318,14 +318,14 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
         ctx.beginPath();
         ctx.moveTo(
           currentPosition.x * viewportScale + centerXRef.current, 
-          currentPosition.y * viewportScale + centerXRef.current
+          currentPosition.y * viewportScale + centerYRef.current
         );
         
         for (let i = 1; i < futurePath.length; i++) {
           const point = futurePath[i];
           ctx.lineTo(
             point.x * viewportScale + centerXRef.current, 
-            point.y * viewportScale + centerXRef.current
+            point.y * viewportScale + centerYRef.current
           );
         }
         
@@ -338,7 +338,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       ctx.beginPath();
       ctx.arc(
         currentPosition.x * viewportScale + centerXRef.current, 
-        currentPosition.y * viewportScale + centerXRef.current, 
+        currentPosition.y * viewportScale + centerYRef.current, 
         6, 0, 2 * Math.PI
       );
       ctx.fill();
@@ -348,7 +348,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       ctx.beginPath();
       ctx.arc(
         destPos.x * viewportScale + centerXRef.current, 
-        destPos.y * viewportScale + centerXRef.current, 
+        destPos.y * viewportScale + centerYRef.current, 
         8, 0, 2 * Math.PI
       );
       ctx.fill();
@@ -360,7 +360,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       
       const labelText = `${destIsland.name}: ${progress.progress.toFixed(0)}%`;
       const labelX = currentPosition.x * viewportScale + centerXRef.current + 10;
-      const labelY = currentPosition.y * viewportScale + centerXRef.current - 10;
+      const labelY = currentPosition.y * viewportScale + centerYRef.current - 10;
       
       // Draw label background
       const textWidth = ctx.measureText(labelText).width;
@@ -398,14 +398,14 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       const startPoint = journey.path[0];
       ctx.moveTo(
         startPoint.x * viewportScale + centerXRef.current, 
-        startPoint.y * viewportScale + centerXRef.current
+        startPoint.y * viewportScale + centerYRef.current
       );
       
       for (let i = 1; i < journey.path.length; i++) {
         const point = journey.path[i];
         ctx.lineTo(
           point.x * viewportScale + centerXRef.current, 
-          point.y * viewportScale + centerXRef.current
+          point.y * viewportScale + centerYRef.current
         );
       }
       
@@ -418,7 +418,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       ctx.beginPath();
       ctx.arc(
         destPos.x * viewportScale + centerXRef.current, 
-        destPos.y * viewportScale + centerXRef.current, 
+        destPos.y * viewportScale + centerYRef.current, 
         8, 0, 2 * Math.PI
       );
       ctx.fill();
@@ -441,7 +441,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
           ctx.beginPath();
           ctx.arc(
             marker.x * viewportScale + centerXRef.current, 
-            marker.y * viewportScale + centerXRef.current, 
+            marker.y * viewportScale + centerYRef.current, 
             4, 0, 2 * Math.PI
           );
           ctx.fill();
@@ -450,7 +450,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
           ctx.globalAlpha = 0.85;
           ctx.fillText(`D+${day}`, 
             marker.x * viewportScale + centerXRef.current + 6, 
-            marker.y * viewportScale + centerXRef.current - 6
+            marker.y * viewportScale + centerYRef.current - 6
           );
         }
       }

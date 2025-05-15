@@ -192,6 +192,7 @@ const SkydriftArchipelagoSimulation = () => {
   
   // Animation frame reference
   const animationFrameRef = useRef<number | undefined>(undefined);
+  const journeyAnimationFrameRef = useRef<number | undefined>(undefined);
   const lastTimeRef = useRef<number>(0);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   
@@ -308,6 +309,12 @@ const SkydriftArchipelagoSimulation = () => {
         clearTimeout(throttleRef.current);
         throttleRef.current = null;
       }
+      
+      // Make sure we cancel and reset the animation frame for journey calculation
+      if (journeyAnimationFrameRef.current) {
+        cancelAnimationFrame(journeyAnimationFrameRef.current);
+        journeyAnimationFrameRef.current = undefined;
+      }
     }
   }, [activeJourney]);
   
@@ -327,6 +334,12 @@ const SkydriftArchipelagoSimulation = () => {
     if (throttleRef.current !== null) {
       clearTimeout(throttleRef.current);
       throttleRef.current = null;
+    }
+    
+    // Cancel any active journey animation frame
+    if (journeyAnimationFrameRef.current) {
+      cancelAnimationFrame(journeyAnimationFrameRef.current);
+      journeyAnimationFrameRef.current = undefined;
     }
   };
   
@@ -575,16 +588,17 @@ const SkydriftArchipelagoSimulation = () => {
         }
         
         // Continue animation loop
-        animationFrameRef.current = requestAnimationFrame(animateJourney);
+        journeyAnimationFrameRef.current = requestAnimationFrame(animateJourney);
       };
       
       // Start animation
-      const animationJourneyRef = { current: requestAnimationFrame(animateJourney) };
+      journeyAnimationFrameRef.current = requestAnimationFrame(animateJourney);
       
       // Cleanup on unmount or when dependencies change
       return () => {
-        if (animationJourneyRef.current) {
-          cancelAnimationFrame(animationJourneyRef.current);
+        if (journeyAnimationFrameRef.current) {
+          cancelAnimationFrame(journeyAnimationFrameRef.current);
+          journeyAnimationFrameRef.current = undefined;
         }
       };
     }
