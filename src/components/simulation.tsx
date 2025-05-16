@@ -91,44 +91,67 @@ const SkydriftArchipelagoSimulation = () => {
       color: colorPalette[0],
       radius: 8,
       cycles: [
-        { period: 300 },
-        { period: 100 }
+        { period: 365 },  // Primary orbit - base of the calendar year
+        { period: 76 }    // Secondary orbit - creating seasons/quarters
       ],
       visible: true
     },
     {
       id: 2,
-      name: "Nimbus",
+      name: "Frostpine",
       color: colorPalette[1],
       radius: 8,
       cycles: [
-        { period: -200 },  // Negative period for opposite direction
-        { period: 50 }
+        { period: 543 },  // Large primary cycle keeping it remote most of the time
+        { period: -178 }, // Secondary cycle that periodically brings it closer to central archipelago
+        { period: 15 }    // Small tertiary cycle for additional complexity
       ],
       visible: true
     },
     {
       id: 3,
-      name: "Cirrus",
+      name: "Velvetia",
       color: colorPalette[2],
       radius: 8,
       cycles: [
-        { period: 450 },
-        { period: -120 },  // Negative period for opposite direction
-        { period: 30 }
+        { period: 627 },  // Very large primary cycle - extremely remote
+        { period: -262 }, // Large secondary cycle that occasionally brings it toward central islands
+        { period: 31 },   // Tertiary cycle
       ],
       visible: true
     },
     {
       id: 4,
-      name: "Stratus",
+      name: "Obsidian Spire",
       color: colorPalette[3],
       radius: 8,
       cycles: [
-        { period: -250 },  // Negative period for opposite direction
-        { period: 100 },
-        { period: -50 },   // Negative period for opposite direction
-        { period: 20 }
+        { period: 415 },  // Large primary cycle
+        { period: -242 }, // Secondary cycle sized to create periodic approaches to Sylvanis
+        { period: 12 }    // Third epicycle for complexity
+      ],
+      visible: true
+    },
+    {
+      id: 5,
+      name: "Sylvanis",
+      color: colorPalette[4],
+      radius: 8,
+      cycles: [
+        { period: 246 },  // Moderate primary cycle - more accessible than remote islands
+        { period: 173 }   // Secondary cycle timed to create conjunctions with Obsidian Spire
+      ],
+      visible: true
+    },
+    {
+      id: 6,
+      name: "Cloudreach",
+      color: colorPalette[5],
+      radius: 8,
+      cycles: [
+        { period: 194 },  // Moderate primary cycle - more accessible
+        { period: 61 },   // Secondary cycle
+        { period: 23 },   // Tertiary cycle
       ],
       visible: true
     }
@@ -648,6 +671,7 @@ const SkydriftArchipelagoSimulation = () => {
             setCenterX(width / 2);
             setCenterY(height / 2);
           }}
+          toggleIslandVisibility={toggleIslandVisibility}
         />
 
         {/* Tab Navigation */}

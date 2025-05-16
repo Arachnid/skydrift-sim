@@ -29,6 +29,7 @@ interface SimulationCanvasProps {
   activeJourney: Journey | null;
   viewportScale: number;
   onResize: (width: number, height: number) => void;
+  toggleIslandVisibility: (islandId: number) => void;
 }
 
 const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
@@ -40,7 +41,8 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
   trailLength,
   activeJourney,
   viewportScale,
-  onResize
+  onResize,
+  toggleIslandVisibility
 }) => {
   const theme = useTheme();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -50,6 +52,9 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
   // CENTER_X and CENTER_Y are initially 0 and will be set in the resize observer
   const centerXRef = useRef<number>(0);
   const centerYRef = useRef<number>(0);
+
+  // Add a ref to store the legend item positions
+  const legendItemPositionsRef = useRef<{ x: number, y: number, width: number, height: number, islandId: number }[]>([]);
 
   // Set up resize observer for canvas
   useEffect(() => {
@@ -547,7 +552,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
     }
   };
   
-  // Draw legend with island information
+  // Update the drawLegend function to store clickable areas and handle clicks
   const drawLegend = (ctx: CanvasRenderingContext2D): void => {
     const visibleIslands = islands.filter(island => island.visible);
     if (visibleIslands.length === 0) return;
@@ -560,7 +565,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
     const lineHeight = 32;
     
     // Calculate legend height based on content
-    let legendHeight = visibleIslands.length * lineHeight + padding * 2;
+    let legendHeight = islands.length * lineHeight + padding * 2;
         
     const legendWidth = 220;
     const legendX = 24;
@@ -606,15 +611,18 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
     ctx.lineTo(legendX + legendWidth - padding, legendY + padding + 12);
     ctx.stroke();
     
+    // Clear previous legend item positions
+    legendItemPositionsRef.current = [];
+
     // Draw island information
-    visibleIslands.forEach((island, index) => {
+    islands.forEach((island, index) => {
       const y = legendY + padding + 24 + index * lineHeight; // Add extra space for title and divider
       const orbitalPeriod = simulator.calculateOrbitalPeriod(island.cycles);
       const { dayInCycle, percentage } = simulator.calculateOrbitalPosition(island.cycles);
       const velocity = simulator.calculateVelocity(island);
       
       // Draw color indicator with MUI-style pill shape
-      ctx.fillStyle = island.color;
+      ctx.fillStyle = island.visible ? island.color : "rgba(0, 0, 0, 0.3)"; // Dim color if not visible
       ctx.beginPath();
       const pillWidth = 24;
       const pillHeight = 12;
@@ -628,6 +636,15 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       ctx.lineTo(pillX + pillRadius, pillY + pillHeight);
       ctx.arc(pillX + pillRadius, pillY + pillRadius, pillRadius, Math.PI/2, -Math.PI/2);
       ctx.fill();
+      
+      // Store clickable area for the legend item
+      legendItemPositionsRef.current.push({
+        x: pillX,
+        y: pillY,
+        width: pillWidth,
+        height: pillHeight,
+        islandId: island.id
+      });
       
       // Draw island name
       ctx.fillStyle = "#212121"; // MUI default text color
@@ -644,7 +661,42 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       );
     });
   };
-  
+
+  // Add a click event listener to toggle island visibility
+  useEffect(() => {
+    const handleCanvasClick = (event: MouseEvent) => {
+      if (!canvasRef.current) return;
+      const rect = canvasRef.current.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      
+      // Check if the click is within any legend item
+      for (const item of legendItemPositionsRef.current) {
+        if (
+          x >= item.x &&
+          x <= item.x + item.width &&
+          y >= item.y &&
+          y <= item.y + item.height
+        ) {
+          // Toggle visibility
+          toggleIslandVisibility(item.islandId);
+          break;
+        }
+      }
+    };
+
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.addEventListener('click', handleCanvasClick);
+    }
+
+    return () => {
+      if (canvas) {
+        canvas.removeEventListener('click', handleCanvasClick);
+      }
+    };
+  }, [toggleIslandVisibility]);
+
   return (
     <CanvasContainer ref={canvasContainerRef}>
       <canvas 
