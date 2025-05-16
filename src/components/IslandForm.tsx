@@ -37,7 +37,7 @@ const IslandForm: React.FC<IslandFormProps> = ({
   calculateMilesRadius
 }) => {
   
-  // Update epicycle value
+  // Update epicycle value to handle both period and radius
   const updateEpicycle = (index: number, field: string, value: string): void => {
     const updatedEpicycles = [...epicycles];
     if (field === 'period') {
@@ -45,6 +45,25 @@ const IslandForm: React.FC<IslandFormProps> = ({
       if (!isNaN(period) && period !== 0) {
         updatedEpicycles[index].period = period;
       }
+    } else if (field === 'radius') {
+      const radius = parseFloat(value);
+      if (!isNaN(radius) && radius !== 0) {
+        // Calculate period from radius
+        const period = Math.pow(radius / 672, 3/2) * 365;
+        updatedEpicycles[index].period = period;
+      }
+    }
+    setEpicycles(updatedEpicycles);
+  };
+
+  // Format the value on blur
+  const formatValueOnBlur = (index: number, field: string): void => {
+    const updatedEpicycles = [...epicycles];
+    if (field === 'period') {
+      updatedEpicycles[index].period = parseFloat(updatedEpicycles[index].period.toFixed(1));
+    } else if (field === 'radius') {
+      const radius = calculateMilesRadius(updatedEpicycles[index].period);
+      updatedEpicycles[index].period = Math.pow(radius / 672, 3/2) * 365;
     }
     setEpicycles(updatedEpicycles);
   };
@@ -150,6 +169,7 @@ const IslandForm: React.FC<IslandFormProps> = ({
                   size="small"
                   value={epicycle.period}
                   onChange={(e) => updateEpicycle(index, 'period', e.target.value)}
+                  onBlur={() => formatValueOnBlur(index, 'period')}
                   inputProps={{ step: "0.5" }}
                   placeholder="Period"
                   sx={{ width: 100 }}
@@ -158,10 +178,14 @@ const IslandForm: React.FC<IslandFormProps> = ({
               <Box>
                 <Typography variant="caption" display="block">Radius (miles)</Typography>
                 <TextField
+                  type="number"
                   size="small"
                   value={calculateMilesRadius(epicycle.period).toFixed(1)}
-                  InputProps={{ readOnly: true }}
-                  sx={{ width: 100, bgcolor: 'grey.50' }}
+                  onChange={(e) => updateEpicycle(index, 'radius', e.target.value)}
+                  onBlur={() => formatValueOnBlur(index, 'radius')}
+                  inputProps={{ step: "0.1" }}
+                  placeholder="Radius"
+                  sx={{ width: 100 }}
                 />
               </Box>
             </Box>
