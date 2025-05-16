@@ -1,0 +1,72 @@
+[
+  {
+    "id": 1,
+    "name": "Aetheria",
+    "color": "#4287f5",
+    "radius": 8,
+    "cycles": [
+      { "period": 365 },
+      { "period": 76 }
+    ],
+    "visible": true
+  },
+  {
+    "id": 2,
+    "name": "Frostpine",
+    "color": "#f54242",
+    "radius": 8,
+    "cycles": [
+      { "period": 543 },
+      { "period": -178 },
+      { "period": 15 }
+    ],
+    "visible": true
+  },
+  {
+    "id": 3,
+    "name": "Velvetia",
+    "color": "#42f5a7",
+    "radius": 8,
+    "cycles": [
+      { "period": 627 },
+      { "period": -262 },
+      { "period": 31 }
+    ],
+    "visible": true
+  },
+  {
+    "id": 4,
+    "name": "Obsidian Spire",
+    "color": "#f5a742",
+    "radius": 8,
+    "cycles": [
+      { "period": 415 },
+      { "period": -242 },
+      { "period": 12 }
+    ],
+    "visible": true
+  },
+  {
+    "id": 5,
+    "name": "Sylvanis",
+    "color": "#9e42f5",
+    "radius": 8,
+    "cycles": [
+      { "period": 246 },
+      { "period": 173 }
+    ],
+    "visible": true
+  },
+  {
+    "id": 6,
+    "name": "Cloudreach",
+    "color": "#f542e5",
+    "radius": 8,
+    "cycles": [
+      { "period": 194 },
+      { "period": 61 },
+      { "period": 23 }
+    ],
+    "visible": true
+  }
+] 

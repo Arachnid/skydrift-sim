@@ -43,6 +43,8 @@ import SimulationCanvas from './SimulationCanvas';
 import IslandEditor from './IslandEditor';
 import JourneyPlanner from './JourneyPlanner';
 import ConjunctionsPanel from './ConjunctionsPanel';
+// Import default islands from the JSON file
+import defaultIslandsData from '../data/defaultIslands.json';
 
 const SkydriftArchipelagoSimulation = () => {
   const theme = useTheme();
@@ -83,79 +85,11 @@ const SkydriftArchipelagoSimulation = () => {
   // Create simulator instance
   const simulatorRef = useRef<SkydriftArchipelagoSimulator>(new SkydriftArchipelagoSimulator());
   
-  // Island configuration state
-  const [islands, setIslands] = useState<Island[]>([
-    {
-      id: 1,
-      name: "Aetheria",
-      color: colorPalette[0],
-      radius: 8,
-      cycles: [
-        { period: 365 },  // Primary orbit - base of the calendar year
-        { period: 76 }    // Secondary orbit - creating seasons/quarters
-      ],
-      visible: true
-    },
-    {
-      id: 2,
-      name: "Frostpine",
-      color: colorPalette[1],
-      radius: 8,
-      cycles: [
-        { period: 543 },  // Large primary cycle keeping it remote most of the time
-        { period: -178 }, // Secondary cycle that periodically brings it closer to central archipelago
-        { period: 15 }    // Small tertiary cycle for additional complexity
-      ],
-      visible: true
-    },
-    {
-      id: 3,
-      name: "Velvetia",
-      color: colorPalette[2],
-      radius: 8,
-      cycles: [
-        { period: 627 },  // Very large primary cycle - extremely remote
-        { period: -262 }, // Large secondary cycle that occasionally brings it toward central islands
-        { period: 31 },   // Tertiary cycle
-      ],
-      visible: true
-    },
-    {
-      id: 4,
-      name: "Obsidian Spire",
-      color: colorPalette[3],
-      radius: 8,
-      cycles: [
-        { period: 415 },  // Large primary cycle
-        { period: -242 }, // Secondary cycle sized to create periodic approaches to Sylvanis
-        { period: 12 }    // Third epicycle for complexity
-      ],
-      visible: true
-    },
-    {
-      id: 5,
-      name: "Sylvanis",
-      color: colorPalette[4],
-      radius: 8,
-      cycles: [
-        { period: 246 },  // Moderate primary cycle - more accessible than remote islands
-        { period: 173 }   // Secondary cycle timed to create conjunctions with Obsidian Spire
-      ],
-      visible: true
-    },
-    {
-      id: 6,
-      name: "Cloudreach",
-      color: colorPalette[5],
-      radius: 8,
-      cycles: [
-        { period: 194 },  // Moderate primary cycle - more accessible
-        { period: 61 },   // Secondary cycle
-        { period: 23 },   // Tertiary cycle
-      ],
-      visible: true
-    }
-  ]);
+  // Cast the imported JSON to the correct type
+  const defaultIslands = defaultIslandsData as Island[];
+  
+  // Island configuration state - use the imported default islands
+  const [islands, setIslands] = useState<Island[]>(defaultIslands);
   
   // Calculate viewport scaling based on island positions and canvas size
   const calculateViewportScale = useCallback(() => {
