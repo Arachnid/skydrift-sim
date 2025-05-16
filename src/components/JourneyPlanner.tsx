@@ -18,6 +18,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Island, Journey } from '../utils/sim';
+import { formatTime, formatDuration } from '../utils/timeFormat';
 
 interface JourneyPlannerProps {
   islands: Island[];
@@ -270,7 +271,7 @@ const JourneyPlanner: React.FC<JourneyPlannerProps> = ({
                 
                 <Grid size={{ xs: 6, md: 2 }}>
                   <Typography variant="caption" fontWeight="medium" display="block">Duration:</Typography>
-                  <Typography variant="body2">{activeJourney.duration.toFixed(1)} days</Typography>
+                  <Typography variant="body2">{formatDuration(activeJourney.duration)}</Typography>
                 </Grid>
                 
                 <Grid size={{ xs: 6, md: 2 }}>
@@ -288,8 +289,8 @@ const JourneyPlanner: React.FC<JourneyPlannerProps> = ({
                 </Grid>
                 
                 <Grid size={{ xs: 6, md: 2 }}>
-                  <Typography variant="caption" fontWeight="medium" display="block">Arrival on Day:</Typography>
-                  <Typography variant="body2">{(activeJourney.arrivalTime / 1000).toFixed(1)}</Typography>
+                  <Typography variant="caption" fontWeight="medium" display="block">Arrival at:</Typography>
+                  <Typography variant="body2">{formatTime(activeJourney.arrivalTime)}</Typography>
                 </Grid>
               </Grid>
             </Box>
@@ -310,7 +311,7 @@ const JourneyPlanner: React.FC<JourneyPlannerProps> = ({
                       <TableCell>From</TableCell>
                       <TableCell>To</TableCell>
                       <TableCell>Progress</TableCell>
-                      <TableCell>ETA (days)</TableCell>
+                      <TableCell>ETA</TableCell>
                       <TableCell>Distance Left</TableCell>
                       <TableCell>Speed</TableCell>
                       <TableCell>Actions</TableCell>
@@ -327,7 +328,7 @@ const JourneyPlanner: React.FC<JourneyPlannerProps> = ({
                           <TableCell>{getIslandName(journey.sourceId)}</TableCell>
                           <TableCell>{getIslandName(journey.destinationId)}</TableCell>
                           <TableCell>{`${progress.progress.toFixed(0)}%`}</TableCell>
-                          <TableCell>{progress.remainingTime.toFixed(1)}</TableCell>
+                          <TableCell>{formatDuration(progress.remainingTime)}</TableCell>
                           <TableCell>{`${progress.remainingDistance.toFixed(0)} mi`}</TableCell>
                           <TableCell>{`${journey.speed} mph`}</TableCell>
                           <TableCell>

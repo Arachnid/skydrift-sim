@@ -17,6 +17,7 @@ import {
 import { styled } from '@mui/material/styles';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import SkydriftArchipelagoSimulator, { Conjunction, Island } from '../utils/sim';
+import { formatTime, formatDuration } from '../utils/timeFormat';
 
 // Style the table for better readability
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
@@ -255,28 +256,9 @@ const ConjunctionsPanel: React.FC<ConjunctionsPanelProps> = ({
     conj => conj.endTime >= currentTime // Filter to show active and upcoming
   );
   
-  // Format timestamp for display
-  const formatTime = (timestamp: number): string => {
-    // Convert from milliseconds to days
-    const days = timestamp / 1000;
-    
-    // Format to 1 decimal place
-    return `Day ${days.toFixed(1)}`;
-  };
-  
   // Format distance for display
   const formatDistance = (distance: number): string => {
     return `${distance.toFixed(1)} miles`;
-  };
-  
-  // Format duration for display
-  const formatDuration = (duration: number): string => {
-    if (duration < 1) {
-      // Convert to hours if less than a day
-      const hours = duration * 24;
-      return `${hours.toFixed(1)} hours`;
-    }
-    return `${duration.toFixed(1)} days`;
   };
   
   // Check if a conjunction is currently active

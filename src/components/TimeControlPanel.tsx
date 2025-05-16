@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -8,13 +8,15 @@ import {
   Stack,
   TextField,
   Typography,
-  Paper
+  Paper,
+  Alert
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import FastForwardIcon from '@mui/icons-material/FastForward';
 import FastRewindIcon from '@mui/icons-material/FastRewind';
+import { formatTime, formatDuration, parseTimeString } from '../utils/timeFormat';
 
 interface TimeControlPanelProps {
   time: number;
@@ -47,6 +49,53 @@ const TimeControlPanel: React.FC<TimeControlPanelProps> = ({
   resetSimulation,
   jumpTime
 }) => {
+  // Format the time display for the UI
+  const formattedTime = formatTime(time);
+  
+  // State for input field and validation
+  const [dateInput, setDateInput] = useState(formattedTime);
+  const [dateError, setDateError] = useState('');
+
+  // Update date input when time changes
+  useEffect(() => {
+    setDateInput(formattedTime);
+  }, [time]);
+  
+  // Format the system period
+  const systemPeriod = calculateSystemPeriod();
+  const formattedSystemPeriod = formatDuration(systemPeriod);
+  
+  // Handle date input change
+  const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDateInput(e.target.value);
+    setDateError('');
+  };
+  
+  // Handle date input blur (validate and apply)
+  const handleDateInputBlur = () => {
+    if (!isPlaying) {
+      const parsedTime = parseTimeString(dateInput);
+      
+      if (parsedTime !== null) {
+        setTime(parsedTime);
+        // Update the input field with the formatted time to ensure consistency
+        setDateInput(formatTime(parsedTime));
+        setDateError('');
+      } else {
+        setDateError('Invalid date format. Use yyyy-mm-dd [h]h');
+        // Reset the input to the current time
+        setDateInput(formattedTime);
+      }
+    }
+  };
+  
+  // Handle date input keypress
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleDateInputBlur();
+    }
+  };
+  
   return (
     <Stack spacing={3} sx={{ mb: 3 }}>
       <Stack direction="row" spacing={2} flexWrap="wrap" alignItems="center">
@@ -142,35 +191,27 @@ const TimeControlPanel: React.FC<TimeControlPanelProps> = ({
         </Stack>
       </Stack>
       
-      {/* Day Control */}
+      {/* Time Controls */}
       <Stack direction="row" spacing={2} alignItems="center">
-        <Typography variant="body2">Day:</Typography>
+        {/* Date input field that updates with current time */}
         <TextField
-          type="number"
-          value={Math.floor((time / 1000) * 100) / 100}
-          onChange={(e) => {
-            const newTime = parseFloat(e.target.value) * 1000;
-            if (!isNaN(newTime) && !isPlaying) {
-              setTime(newTime);
-            }
-          }}
-          onBlur={(e) => {
-            // Format with 2 decimal places on blur
-            const value = parseFloat(e.target.value);
-            if (!isNaN(value)) {
-              e.target.value = value.toFixed(2);
-            }
-          }}
+          label="Current Time"
+          value={dateInput}
+          onChange={handleDateInputChange}
+          onBlur={handleDateInputBlur}
+          onKeyPress={handleKeyPress}
           disabled={isPlaying}
           size="small"
-          inputProps={{ step: "1", min: "0" }}
-          sx={{ width: 100 }}
+          placeholder="yyyy-mm-dd [h]h"
+          sx={{ width: 180 }}
+          helperText={dateError || "Format: yyyy-mm-dd [h]h"}
+          error={!!dateError}
         />
         
         {/* Total System Period Display */}
         <Paper sx={{ ml: 2, px: 2, py: 1, backgroundColor: 'primary.light', color: 'primary.contrastText' }} variant="outlined">
           <Typography variant="caption" fontWeight="medium">System Period: </Typography>
-          <Typography variant="caption">{calculateSystemPeriod().toFixed(2)} days</Typography>
+          <Typography variant="caption">{formattedSystemPeriod}</Typography>
         </Paper>
       </Stack>
     </Stack>
