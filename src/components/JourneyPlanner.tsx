@@ -15,7 +15,6 @@ import {
   TableRow,
   IconButton
 } from '@mui/material';
-import UpdateIcon from '@mui/icons-material/Update';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Island, Journey } from '../utils/sim';
@@ -79,22 +78,6 @@ const JourneyPlanner: React.FC<JourneyPlannerProps> = ({
         <Typography variant="subtitle1" fontWeight="medium">
           Journey Planner
         </Typography>
-        {isPlaying && (
-          <Chip
-            color="primary"
-            size="small"
-            icon={<UpdateIcon />}
-            label="Live updating"
-            sx={{ 
-              animation: 'pulse 1.5s infinite ease-in-out',
-              '@keyframes pulse': {
-                '0%': { opacity: 0.7 },
-                '50%': { opacity: 1 },
-                '100%': { opacity: 0.7 }
-              }
-            }}
-          />
-        )}
       </Box>
       
       <Grid container spacing={3}>
@@ -278,15 +261,6 @@ const JourneyPlanner: React.FC<JourneyPlannerProps> = ({
             <Box sx={{ mt: 2, p: 2, borderTop: 1, borderColor: 'divider' }}>
               <Typography variant="subtitle2" gutterBottom>
                 Predicted Route
-                {isPlaying && (
-                  <Chip
-                    color="info"
-                    size="small"
-                    icon={<UpdateIcon />}
-                    label="Live"
-                    sx={{ ml: 1, height: 20, '& .MuiChip-label': { px: 1 } }}
-                  />
-                )}
               </Typography>
               <Grid container spacing={3}>
                 <Grid size={{ xs: 6, md: 2 }}>
@@ -327,15 +301,6 @@ const JourneyPlanner: React.FC<JourneyPlannerProps> = ({
             <Box sx={{ mt: 3 }}>
               <Typography variant="subtitle2" gutterBottom>
                 Active Journeys
-                {isPlaying && (
-                  <Chip
-                    color="success"
-                    size="small"
-                    icon={<UpdateIcon />}
-                    label="Live"
-                    sx={{ ml: 1, height: 20, '& .MuiChip-label': { px: 1 } }}
-                  />
-                )}
               </Typography>
               
               <TableContainer component={Paper} variant="outlined">

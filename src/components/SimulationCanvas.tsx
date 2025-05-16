@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Box, styled } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import SkydriftArchipelagoSimulator, { Island, Position, Journey } from '../utils/sim';
+import SkydriftArchipelagoSimulator, { Island, Position, Journey, Conjunction } from '../utils/sim';
 
 // Custom styled component for the canvas container
 const CanvasContainer = styled(Box)(({ theme }) => ({
@@ -157,6 +157,9 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       });
     }
     
+    // Draw active conjunctions
+    drawActiveConjunctions(ctx);
+    
     // Draw trails
     if (showTrails) {
       islands.forEach(island => {
@@ -228,6 +231,91 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
     // Draw legend
     drawLegend(ctx);
   }, [simulator, islands, time, showOrbits, showTrails, trailLength, activeJourney, viewportScale, theme]);
+
+  // Helper function to draw active conjunctions
+  const drawActiveConjunctions = (ctx: CanvasRenderingContext2D): void => {
+    // Get the active conjunctions
+    const activeConjunctions = simulator.getActiveConjunctions();
+    
+    activeConjunctions.forEach(conjunction => {
+      const island1 = islands.find(i => i.id === conjunction.island1Id);
+      const island2 = islands.find(i => i.id === conjunction.island2Id);
+      
+      if (island1?.visible && island2?.visible) {
+        // Get the current positions of both islands
+        const pos1 = simulator.calculatePosition(island1);
+        const pos2 = simulator.calculatePosition(island2);
+        
+        // Draw the conjunction indicator
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle = "#f44336"; // MUI red color for conjunction area
+        
+        // Draw a circle at the midpoint between the islands
+        const midX = (pos1.x + pos2.x) / 2;
+        const midY = (pos1.y + pos2.y) / 2;
+        
+        // Calculate the distance between islands
+        const distance = simulator.calculateDistance(island1, island2);
+        
+        // Draw a circle with a radius proportional to the conjunction threshold
+        const conjunctionRadius = simulator.CONJUNCTION_THRESHOLD * viewportScale;
+        
+        ctx.beginPath();
+        ctx.arc(
+          midX * viewportScale + centerXRef.current,
+          midY * viewportScale + centerYRef.current,
+          conjunctionRadius, 0, 2 * Math.PI
+        );
+        ctx.fill();
+        
+        // Connect the islands with a line
+        ctx.globalAlpha = 0.8;
+        ctx.strokeStyle = "#f44336"; // MUI red
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(
+          pos1.x * viewportScale + centerXRef.current,
+          pos1.y * viewportScale + centerYRef.current
+        );
+        ctx.lineTo(
+          pos2.x * viewportScale + centerXRef.current,
+          pos2.y * viewportScale + centerYRef.current
+        );
+        ctx.stroke();
+        
+        // Draw the minimum distance
+        ctx.globalAlpha = 1;
+        ctx.font = "bold 12px Roboto, Arial, sans-serif";
+        ctx.fillStyle = "#f44336"; // MUI red
+        
+        const distanceText = `${distance.toFixed(1)} miles`;
+        const textWidth = ctx.measureText(distanceText).width;
+        
+        // Position the text at the midpoint
+        const textX = midX * viewportScale + centerXRef.current - textWidth / 2;
+        const textY = midY * viewportScale + centerYRef.current - 15;
+        
+        // Draw text background
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        const padding = 4;
+        const capsuleRadius = 8;
+        
+        ctx.beginPath();
+        ctx.moveTo(textX - padding + capsuleRadius, textY - 12);
+        ctx.lineTo(textX + textWidth + padding - capsuleRadius, textY - 12);
+        ctx.arc(textX + textWidth + padding - capsuleRadius, textY - 12 + capsuleRadius, capsuleRadius, -Math.PI/2, Math.PI/2);
+        ctx.lineTo(textX - padding + capsuleRadius, textY + 4);
+        ctx.arc(textX - padding + capsuleRadius, textY - 12 + capsuleRadius, capsuleRadius, Math.PI/2, -Math.PI/2);
+        ctx.fill();
+        
+        // Draw text
+        ctx.fillStyle = "#f44336";
+        ctx.fillText(distanceText, textX, textY);
+      }
+    });
+    
+    ctx.globalAlpha = 1;
+  };
 
   // Helper function to draw the trail for an island
   const drawIslandTrail = (ctx: CanvasRenderingContext2D, island: Island): void => {

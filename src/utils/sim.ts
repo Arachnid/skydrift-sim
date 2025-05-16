@@ -47,6 +47,20 @@ export interface OrbitalPosition {
   percentage: number;
 }
 
+// Add Conjunction interface
+export interface Conjunction {
+  id: number;
+  island1Id: number;
+  island2Id: number;
+  island1Name: string;
+  island2Name: string;
+  startTime: number;  // When the conjunction begins
+  endTime: number;    // When the conjunction ends
+  minDistance: number; // Minimum distance during conjunction
+  minDistanceTime: number; // Time at which minimum distance occurs
+  duration: number;   // Duration in days
+}
+
 export default class SkydriftArchipelagoSimulator {
   // Fixed scaling constant for internal coordinates (miles)
   // Set so that a period of 365 days has an orbital radius of 672 miles
@@ -57,6 +71,9 @@ export default class SkydriftArchipelagoSimulator {
   private centerX: number = 400;
   private centerY: number = 400;
   private activeJourneys: Journey[] = [];
+  
+  // Define what constitutes a conjunction (in miles)
+  public readonly CONJUNCTION_THRESHOLD = 50;
 
   constructor(islands: Island[] = []) {
     this.islands = [...islands];
@@ -665,5 +682,323 @@ export default class SkydriftArchipelagoSimulator {
     
     journey.path = path;
     return journey;
+  }
+
+  // Calculate all upcoming conjunctions for a specified time range
+  calculateUpcomingConjunctions(lookAheadDays: number = 365, startFromTime?: number): Conjunction[] {
+    if (this.islands.length < 2) return [];
+    
+    const conjunctions: Conjunction[] = [];
+    const startTime = startFromTime !== undefined ? startFromTime : this.time;
+    const endTime = startTime + (lookAheadDays * 1000); // Convert days to milliseconds
+    const timeStep = 250; // Smaller step for more accurate initial detection
+    
+    // Binary search function to find exact time when distance crosses threshold
+    const findExactThresholdCrossing = (
+      island1: Island, 
+      island2: Island, 
+      startTime: number, 
+      endTime: number, 
+      isStartPoint: boolean // true for finding start, false for finding end
+    ): number => {
+      // Precision in milliseconds (0.05 days)
+      const precision = 0.05 * 1000;
+      
+      // If we've reached our precision, return the midpoint
+      if (endTime - startTime <= precision) {
+        return (startTime + endTime) / 2;
+      }
+      
+      const midTime = (startTime + endTime) / 2;
+      const distance = this.calculateDistance(island1, island2, midTime);
+      const distanceAtStart = this.calculateDistance(island1, island2, startTime);
+      const distanceAtEnd = this.calculateDistance(island1, island2, endTime);
+      
+      // Check if we've straddled the threshold
+      const startIsUnder = distanceAtStart <= this.CONJUNCTION_THRESHOLD;
+      const endIsUnder = distanceAtEnd <= this.CONJUNCTION_THRESHOLD;
+      const midIsUnder = distance <= this.CONJUNCTION_THRESHOLD;
+      
+      if (isStartPoint) {
+        // For entry point: we want the first point where distance crosses below threshold
+        // If mid point is under threshold but start is over, search between start and mid
+        if (midIsUnder && !startIsUnder) {
+          return findExactThresholdCrossing(island1, island2, startTime, midTime, isStartPoint);
+        }
+        // If mid point is over threshold but end is under, search between mid and end
+        else if (!midIsUnder && endIsUnder) {
+          return findExactThresholdCrossing(island1, island2, midTime, endTime, isStartPoint);
+        }
+        // If all points are on same side of threshold, no crossing was found
+        else if (startIsUnder && midIsUnder && endIsUnder) {
+          // All points under threshold - return the start time (earliest known point)
+          return startTime;
+        } else {
+          // All points over threshold - return the end time (furthest known point)
+          return endTime;
+        }
+      } else {
+        // For exit point: we want the first point where distance crosses above threshold
+        // If mid point is over threshold but start is under, search between start and mid
+        if (!midIsUnder && startIsUnder) {
+          return findExactThresholdCrossing(island1, island2, startTime, midTime, isStartPoint);
+        }
+        // If mid point is under threshold but end is over, search between mid and end
+        else if (midIsUnder && !endIsUnder) {
+          return findExactThresholdCrossing(island1, island2, midTime, endTime, isStartPoint);
+        }
+        // If all points are on same side of threshold, no crossing was found
+        else if (startIsUnder && midIsUnder && endIsUnder) {
+          // All points under threshold - return the end time (furthest known point)
+          return endTime;
+        } else {
+          // All points over threshold - return the start time (earliest known point)
+          return startTime;
+        }
+      }
+    };
+    
+    // Check for conjunctions already in progress at start time
+    for (let i = 0; i < this.islands.length; i++) {
+      const island1 = this.islands[i];
+      
+      for (let j = i + 1; j < this.islands.length; j++) {
+        const island2 = this.islands[j];
+        
+        // Check if islands are already in conjunction at start time
+        const initialDistance = this.calculateDistance(island1, island2, startTime);
+        
+        if (initialDistance <= this.CONJUNCTION_THRESHOLD) {
+          // Islands are already in conjunction at start time
+          // Look backward to find when this conjunction started
+          const lookBackTime = startTime - (30 * 1000); // Look back 30 days
+          
+          // Check if they were not in conjunction 30 days ago
+          const pastDistance = this.calculateDistance(island1, island2, lookBackTime);
+          
+          if (pastDistance > this.CONJUNCTION_THRESHOLD) {
+            // They weren't in conjunction in the past, so find the exact start
+            const exactStartTime = findExactThresholdCrossing(
+              island1, 
+              island2, 
+              lookBackTime, 
+              startTime, 
+              true
+            );
+            
+            // Now look forward to find when this conjunction ends
+            let foundEnd = false;
+            let exactEndTime = endTime;
+            
+            // Scan forward at a larger step to find potential end
+            for (let t = startTime; t <= endTime; t += timeStep * 4) {
+              const distance = this.calculateDistance(island1, island2, t);
+              
+              if (distance > this.CONJUNCTION_THRESHOLD) {
+                // Found potential end, now find exact end
+                exactEndTime = findExactThresholdCrossing(
+                  island1, 
+                  island2, 
+                  t - timeStep * 4, 
+                  t, 
+                  false
+                );
+                foundEnd = true;
+                break;
+              }
+            }
+            
+            // Find more precise minimum distance during the conjunction
+            const minDistTime = this.findMinimumDistanceTime(
+              island1, 
+              island2, 
+              exactStartTime,
+              exactEndTime,
+              1 // 1ms precision
+            );
+            
+            const minDistance = this.calculateDistance(island1, island2, minDistTime);
+            
+            // Add the conjunction to the list
+            conjunctions.push({
+              id: Date.now() + conjunctions.length, // Unique ID
+              island1Id: island1.id,
+              island2Id: island2.id,
+              island1Name: island1.name,
+              island2Name: island2.name,
+              startTime: exactStartTime,
+              endTime: exactEndTime,
+              minDistance: minDistance,
+              minDistanceTime: minDistTime,
+              duration: (exactEndTime - exactStartTime) / 1000 // Convert to days
+            });
+            
+            // Skip checking this pair in the main loop if we already found the endpoint
+            if (foundEnd) {
+              continue;
+            }
+          }
+        }
+        
+        // Track current conjunction to handle conjunction spanning multiple days
+        let currentConjunction: { 
+          start: number, 
+          minDist: number, 
+          minDistTime: number,
+          inConjunction: boolean 
+        } | null = null;
+        
+        // Scan through time to find potential conjunctions
+        for (let t = startTime; t <= endTime; t += timeStep) {
+          const distance = this.calculateDistance(island1, island2, t);
+          
+          // Check if islands are in conjunction
+          if (distance <= this.CONJUNCTION_THRESHOLD) {
+            // Start a new conjunction if not already in one
+            if (!currentConjunction || !currentConjunction.inConjunction) {
+              // Find exact start time using binary search
+              let exactStartTime = t;
+              if (t > startTime) {
+                // Only search for exact start if this isn't the first time point
+                exactStartTime = findExactThresholdCrossing(
+                  island1, 
+                  island2, 
+                  t - timeStep, 
+                  t, 
+                  true
+                );
+              }
+              
+              currentConjunction = {
+                start: exactStartTime,
+                minDist: distance,
+                minDistTime: t,
+                inConjunction: true
+              };
+            } 
+            // Update minimum distance if needed
+            else if (distance < currentConjunction.minDist) {
+              currentConjunction.minDist = distance;
+              currentConjunction.minDistTime = t;
+            }
+          } 
+          // End of conjunction
+          else if (currentConjunction && currentConjunction.inConjunction) {
+            // Find exact end time using binary search
+            const exactEndTime = findExactThresholdCrossing(
+              island1, 
+              island2, 
+              t - timeStep, 
+              t, 
+              false
+            );
+            
+            // Find more precise minimum distance during the conjunction
+            const minDistTime = this.findMinimumDistanceTime(
+              island1, 
+              island2, 
+              currentConjunction.start,
+              exactEndTime,
+              1 // 1ms precision
+            );
+            
+            const minDistance = this.calculateDistance(island1, island2, minDistTime);
+            
+            // Add the conjunction to the list
+            conjunctions.push({
+              id: Date.now() + conjunctions.length, // Unique ID
+              island1Id: island1.id,
+              island2Id: island2.id,
+              island1Name: island1.name,
+              island2Name: island2.name,
+              startTime: currentConjunction.start,
+              endTime: exactEndTime,
+              minDistance: minDistance,
+              minDistanceTime: minDistTime,
+              duration: (exactEndTime - currentConjunction.start) / 1000 // Convert to days
+            });
+            
+            // Reset currentConjunction
+            currentConjunction.inConjunction = false;
+          }
+        }
+        
+        // Handle conjunction that extends beyond the end time
+        if (currentConjunction && currentConjunction.inConjunction) {
+          // Look forward to see if conjunction ends within a reasonable time
+          const lookForwardTime = endTime + (30 * 1000); // Look forward 30 days
+          let foundEnd = false;
+          let exactEndTime = endTime;
+          
+          // Check at a few points beyond our window
+          for (let t = endTime + timeStep; t <= lookForwardTime; t += timeStep * 4) {
+            const distance = this.calculateDistance(island1, island2, t);
+            
+            if (distance > this.CONJUNCTION_THRESHOLD) {
+              // Found the end point beyond our window, find the exact time
+              exactEndTime = findExactThresholdCrossing(
+                island1, 
+                island2, 
+                t - timeStep * 4, 
+                t, 
+                false
+              );
+              foundEnd = true;
+              break;
+            }
+          }
+          
+          // If we couldn't find the end, just use the endTime
+          if (!foundEnd) {
+            exactEndTime = endTime;
+          }
+          
+          const minDistTime = this.findMinimumDistanceTime(
+            island1, 
+            island2, 
+            currentConjunction.start,
+            exactEndTime,
+            1 // 1ms precision
+          );
+          
+          const minDistance = this.calculateDistance(island1, island2, minDistTime);
+          
+          conjunctions.push({
+            id: Date.now() + conjunctions.length, // Unique ID
+            island1Id: island1.id,
+            island2Id: island2.id,
+            island1Name: island1.name,
+            island2Name: island2.name,
+            startTime: currentConjunction.start,
+            endTime: exactEndTime,
+            minDistance: minDistance,
+            minDistanceTime: minDistTime,
+            duration: (exactEndTime - currentConjunction.start) / 1000 // Convert to days
+          });
+        }
+      }
+    }
+    
+    // Sort by start time
+    return conjunctions.sort((a, b) => a.startTime - b.startTime);
+  }
+  
+  // Get active conjunctions at the current time
+  getActiveConjunctions(): Conjunction[] {
+    const allConjunctions = this.calculateUpcomingConjunctions(0.1); // Look just slightly ahead
+    return allConjunctions.filter(conj => 
+      conj.startTime <= this.time && conj.endTime >= this.time
+    );
+  }
+  
+  // Check if two islands are currently in conjunction
+  isInConjunction(island1Id: number, island2Id: number): boolean {
+    const island1 = this.islands.find(island => island.id === island1Id);
+    const island2 = this.islands.find(island => island.id === island2Id);
+    
+    if (!island1 || !island2) return false;
+    
+    const distance = this.calculateDistance(island1, island2);
+    return distance <= this.CONJUNCTION_THRESHOLD;
   }
 } 

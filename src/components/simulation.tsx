@@ -36,11 +36,13 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import DirectionsBoatIcon from '@mui/icons-material/DirectionsBoat';
 import TerrainIcon from '@mui/icons-material/Terrain';
 import UpdateIcon from '@mui/icons-material/Update';
-import SkydriftArchipelagoSimulator, { Island, Epicycle, Position, Journey } from '../utils/sim';
+import FilterCenterFocusIcon from '@mui/icons-material/FilterCenterFocus';
+import SkydriftArchipelagoSimulator, { Island, Epicycle, Position, Journey, Conjunction } from '../utils/sim';
 import TimeControlPanel from './TimeControlPanel';
 import SimulationCanvas from './SimulationCanvas';
 import IslandEditor from './IslandEditor';
 import JourneyPlanner from './JourneyPlanner';
+import ConjunctionsPanel from './ConjunctionsPanel';
 
 const SkydriftArchipelagoSimulation = () => {
   const theme = useTheme();
@@ -205,7 +207,7 @@ const SkydriftArchipelagoSimulation = () => {
   const [activeJourneys, setActiveJourneys] = useState<Journey[]>([]);
   
   // Add state for tab management
-  const [activeTab, setActiveTab] = useState<'island' | 'journey'>('island');
+  const [activeTab, setActiveTab] = useState<'island' | 'journey' | 'conjunction'>('island');
   
   // Add a throttle reference to limit journey updates
   const throttleRef = useRef<number | null>(null);
@@ -668,6 +670,12 @@ const SkydriftArchipelagoSimulation = () => {
               label="Journey Planner" 
               value="journey" 
             />
+            <Tab 
+              icon={<FilterCenterFocusIcon />} 
+              iconPosition="start" 
+              label="Conjunctions" 
+              value="conjunction" 
+            />
           </Tabs>
         </Box>
 
@@ -710,6 +718,16 @@ const SkydriftArchipelagoSimulation = () => {
             deleteJourney={deleteJourney}
             simulator={simulatorRef.current}
             time={time}
+          />
+        )}
+
+        {activeTab === 'conjunction' && (
+          <ConjunctionsPanel
+            simulator={simulatorRef.current}
+            islands={islands}
+            currentTime={time}
+            setTime={setTime}
+            setIsPlaying={setIsPlaying}
           />
         )}
       </Paper>
