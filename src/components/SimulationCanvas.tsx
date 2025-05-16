@@ -104,15 +104,15 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
     // Clear canvas with slightly off-white background for better contrast
     ctx.fillStyle = "#fafafa"; // MUI background.default
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw center point
-    ctx.fillStyle = theme.palette.text.primary;
-    ctx.beginPath();
-    ctx.arc(centerXRef.current, centerYRef.current, 4, 0, 2 * Math.PI);
-    ctx.fill();
-    
+        
     // Draw epicycle circles and orbits
     if (showOrbits) {
+      // Draw center point
+      ctx.fillStyle = theme.palette.text.primary;
+      ctx.beginPath();
+      ctx.arc(centerXRef.current, centerYRef.current, 4, 0, 2 * Math.PI);
+      ctx.fill();
+
       islands.forEach(island => {
         // Skip if island is not visible
         if (!island.visible) return;

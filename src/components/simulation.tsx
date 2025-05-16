@@ -176,7 +176,7 @@ const SkydriftArchipelagoSimulation = () => {
   const [time, setTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(SIMULATION_SPEED);
-  const [showOrbits, setShowOrbits] = useState(true);
+  const [showOrbits, setShowOrbits] = useState(false);
   const [showTrails, setShowTrails] = useState(true);
   const [trailLength, setTrailLength] = useState(30000); // 30 days in milliseconds
   
