@@ -1,0 +1,211 @@
+{
+  "baseIsland": {
+    "id": 1,
+    "name": "Aetheria",
+    "color": "#3498db",
+    "radius": 5,
+    "visible": true,
+    "cycles": [
+      { "period": 365 },
+      { "period": 73 }
+    ]
+  },
+  "epicycleBounds": [
+    {
+      "minPeriod": 100,
+      "maxPeriod": 800,
+      "allowNegative": true
+    },
+    {
+      "minProportion": 0.1,
+      "maxProportion": 0.75,
+      "allowNegative": true
+    },
+    {
+      "minProportion": 0.1,
+      "maxProportion": 0.75,
+      "allowNegative": true
+    }
+  ],
+  "islandsToConfigure": [
+      {
+        "id": 2,
+        "name": "Sylvanis",
+        "color": "#9e42f5",
+        "radius": 8,
+        "cycles": [],
+        "visible": true
+      },
+      {
+        "id": 3,
+        "name": "Emberhold",
+        "color": "#f54242",
+        "radius": 8,
+        "cycles": [],
+        "visible": true
+      },
+      {
+        "id": 4,
+        "name": "Azuremist",
+        "color": "#42a7f5",
+        "radius": 8,
+        "cycles": [],
+        "visible": true
+      },
+      {
+        "id": 5,
+        "name": "Frostpine",
+        "color": "#7ef542",
+        "radius": 6,
+        "cycles": [],
+        "visible": true
+      },
+      {
+        "id": 6,
+        "name": "Velvetia",
+        "color": "#42f5a7",
+        "radius": 6,
+        "cycles": [],
+        "visible": true
+      },
+      {
+        "id": 7,
+        "name": "Obsidian Spire",
+        "color": "#f5a742",
+        "radius": 6,
+        "cycles": [],
+        "visible": true
+      },
+      {
+        "id": 8,
+        "name": "Cloudreach",
+        "color": "#f542e5",
+        "radius": 6,
+        "cycles": [],
+        "visible": true
+      },
+      {
+        "id": 9,
+        "name": "Thornvale",
+        "color": "#8a42f5",
+        "radius": 6,
+        "cycles": [],
+        "visible": true
+      },
+      {
+        "id": 10,
+        "name": "Sandrift",
+        "color": "#f5d642",
+        "radius": 6,
+        "cycles": [],
+        "visible": true
+      },
+      {
+        "id": 11,
+        "name": "Mistral Isle",
+        "color": "#42f5e8",
+        "radius": 6,
+        "cycles": [],
+        "visible": true
+      }
+  ],
+  "conjunctionTargets": [
+    {
+      "island1Id": 1,
+      "island2Id": 2,
+      "targetAvgGap": 180
+    },
+    {
+      "island1Id": 1,
+      "island2Id": 3,
+      "targetAvgGap": 180
+    },
+    {
+      "island1Id": 1,
+      "island2Id": 4,
+      "targetAvgGap": 180
+    },
+    {
+      "island1Id": 2,
+      "island2Id": 5,
+      "targetAvgGap": 540
+    },
+    {
+      "island1Id": 2,
+      "island2Id": 6,
+      "targetAvgGap": 540
+    },
+    {
+      "island1Id": 2,
+      "island2Id": 7,
+      "targetAvgGap": 540
+    },
+    {
+      "island1Id": 3,
+      "island2Id": 8,
+      "targetAvgGap": 540
+    },
+    {
+      "island1Id": 3,
+      "island2Id": 9,
+      "targetAvgGap": 540
+    },
+    {
+      "island1Id": 4,
+      "island2Id": 10,
+      "targetAvgGap": 540
+    },
+    {
+      "island1Id": 4,
+      "island2Id": 11,
+      "targetAvgGap": 540
+    },
+    {
+      "island1Id": 5,
+      "island2Id": 1,
+      "targetAvgGap": 3600
+    },
+    {
+      "island1Id": 6,
+      "island2Id": 1,
+      "targetAvgGap": 3600
+    },
+    {
+      "island1Id": 7,
+      "island2Id": 1,
+      "targetAvgGap": 3600
+    },
+    {
+      "island1Id": 8,
+      "island2Id": 1,
+      "targetAvgGap": 3600
+    },
+    {
+      "island1Id": 9,
+      "island2Id": 1,
+      "targetAvgGap": 3600
+    },
+    {
+      "island1Id": 10,
+      "island2Id": 1,
+      "targetAvgGap": 3600
+    },
+    {
+      "island1Id": 11,
+      "island2Id": 1,
+      "targetAvgGap": 3600
+    }
+  ],
+  "analysisParams": {
+    "simulationDays": 36500,
+    "timeStepDays": 30,
+    "startTimeMs": 365000
+  },
+  "annealingParams": {
+    "initialTemperature": 1000,
+    "coolingRate": 0.95,
+    "minTemperature": 100,
+    "iterationsPerTemp": 20,
+    "numInitialConfigs": 100
+  }
+} 

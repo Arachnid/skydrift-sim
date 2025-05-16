@@ -27,7 +27,8 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "convert-days": "node scripts/convert-days.js",
-    "analyze-conjunctions": "node scripts/analyze-conjunctions.js"
+    "analyze-conjunctions": "node scripts/analyze-conjunctions.js",
+    "search-island-config": "node scripts/search-island-config.js"
   },
   "eslintConfig": {
     "extends": [

@@ -1,0 +1,35 @@
+[
+  {
+    "id": 1,
+    "name": "Aetheria",
+    "color": "#3498db",
+    "radius": 5,
+    "visible": true,
+    "cycles": [
+      {
+        "period": 365
+      },
+      {
+        "period": 73
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "Sylvanis",
+    "color": "#9e42f5",
+    "radius": 8,
+    "cycles": [
+      {
+        "period": 367.5747377695467
+      },
+      {
+        "period": 38.57558567470777
+      },
+      {
+        "period": 4.833841039015976
+      }
+    ],
+    "visible": true
+  }
+]

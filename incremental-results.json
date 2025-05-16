@@ -1,0 +1,53 @@
+[
+  {
+    "id": 1,
+    "name": "Aetheria",
+    "color": "#3498db",
+    "radius": 5,
+    "visible": true,
+    "cycles": [
+      {
+        "period": 365
+      },
+      {
+        "period": 73
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "Sylvanis",
+    "color": "#9e42f5",
+    "radius": 8,
+    "cycles": [
+      {
+        "period": -100
+      },
+      {
+        "period": -349.8693204769567
+      },
+      {
+        "period": 158.53104935129397
+      }
+    ],
+    "visible": true
+  },
+  {
+    "id": 3,
+    "name": "Frostpine",
+    "color": "#f54242",
+    "radius": 8,
+    "cycles": [
+      {
+        "period": -235.64137498884998
+      },
+      {
+        "period": 261.7873809466999
+      },
+      {
+        "period": 341.48681798323696
+      }
+    ],
+    "visible": true
+  }
+]
