@@ -487,6 +487,51 @@ export default class SkydriftArchipelagoSimulator {
     return angle;
   }
   
+  // Calculate the length of a spiral path between two points in polar coordinates
+  // Uses an analytical approach for an Archimedean spiral
+  polarPathLength(
+    r1: number,
+    theta1: number,
+    r2: number,
+    theta2: number,
+    isClockwise: boolean = true
+  ): number {
+    // Normalize the angles to be in the range [0, 2π) using modulus
+    theta1 = ((theta1 % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    theta2 = ((theta2 % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    
+    // Calculate the angle difference based on direction
+    let deltaTheta = theta2 - theta1;
+    
+    // Adjust deltaTheta based on direction to ensure it represents the correct arc
+    if (isClockwise) {
+      if (deltaTheta < 0) deltaTheta += 2 * Math.PI;
+    } else {
+      if (deltaTheta > 0) deltaTheta -= 2 * Math.PI;
+    }
+    
+    // Handle pure radial movement
+    if (Math.abs(deltaTheta) < 1e-10) {
+      return Math.abs(r2 - r1);
+    }
+    
+    // Parameters for Archimedean spiral: r(θ) = a + bθ
+    const b = (r2 - r1) / deltaTheta;
+    const a = r1 - b * theta1;
+    
+    // Arc length calculation function for Archimedean spiral
+    function F(theta: number): number {
+      const rt = a + b * theta;
+      const sqrtTerm = Math.sqrt(rt * rt + b * b);
+      const sinhInv = Math.log(rt / Math.abs(b) + sqrtTerm / Math.abs(b)); // Equivalent to asinh(rt/b)
+      return rt * sqrtTerm + b * b * sinhInv;
+    }
+    
+    // Calculate the arc length
+    // Division by (2 * |b|) handles the case when b is negative
+    return Math.abs(F(theta1 + deltaTheta) - F(theta1)) / (2 * Math.abs(b));
+  }
+  
   // Calculate journey between two islands
   calculateJourney(sourceIslandId: number, destinationIslandId: number, journeySpeed: number, isPrediction: boolean = false): Journey | null {
     if (journeySpeed <= 0) {
@@ -537,64 +582,17 @@ export default class SkydriftArchipelagoSimulator {
       
       // Determine if clockwise or counterclockwise is shorter
       const isClockwise = angleDiff > 0;
-      const shortestAngleDiff = Math.min(Math.abs(angleDiff), 2 * Math.PI - Math.abs(angleDiff));
       
-      // Calculate path length using numerical integration
-      const numSegments = 100;
-      let totalDistance = 0;
-      let prevR = sourcePolar.r;
-      let prevTheta = sourcePolar.theta;
-      const path: Position[] = [];
+      // Calculate path length using analytical formula
+      distance = this.polarPathLength(
+        sourcePolar.r,
+        sourcePolar.theta,
+        destPolar.r,
+        destPolar.theta,
+        isClockwise
+      );
       
-      // Add starting point
-      path.push({
-        x: sourcePos.x,
-        y: sourcePos.y,
-        time: this.time
-      });
-      
-      for (let i = 1; i <= numSegments; i++) {
-        const t = i / numSegments;
-        
-        // Linear interpolation of radius
-        const r = sourcePolar.r + t * (destPolar.r - sourcePolar.r);
-        
-        // Angular interpolation (taking shortest path)
-        let theta;
-        if (isClockwise) {
-          if (angleDiff > 0) {
-            theta = sourcePolar.theta + t * angleDiff;
-          } else {
-            theta = sourcePolar.theta + t * (angleDiff + 2 * Math.PI);
-          }
-        } else {
-          if (angleDiff < 0) {
-            theta = sourcePolar.theta + t * angleDiff;
-          } else {
-            theta = sourcePolar.theta + t * (angleDiff - 2 * Math.PI);
-          }
-        }
-        
-        // Calculate segment length
-        const dr = r - prevR;
-        const dTheta = this.normalizeAngle(theta - prevTheta);
-        const segmentLength = Math.sqrt(dr * dr + Math.pow((prevR + r) / 2 * dTheta, 2));
-        
-        totalDistance += segmentLength;
-        prevR = r;
-        prevTheta = theta;
-        
-        // Convert back to Cartesian for the path
-        const pos = this.polarToCartesian(r, theta);
-        path.push({
-          x: pos.x,
-          y: pos.y,
-          time: this.time + (t * duration * 1000) // Interpolate time along the path
-        });
-      }
-      
-      // Update distance and duration
-      distance = totalDistance;
+      // Update duration based on new distance
       duration = distance / (journeySpeed * 24); // Convert to days (speed is mph, so mph * 24 = miles per day)
       iterations++;
     }
@@ -656,7 +654,7 @@ export default class SkydriftArchipelagoSimulator {
         }
       }
       
-      // Convert back to Cartesian
+      // Convert back to Cartesian for the path
       const pos = this.polarToCartesian(r, theta);
       path.push({
         x: pos.x,
