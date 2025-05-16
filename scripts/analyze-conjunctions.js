@@ -47,9 +47,9 @@ function printConjunctionStats(stats) {
     .sort((a, b) => b.totalConjunctions - a.totalConjunctions);
   
   // Create ASCII table with abbreviated column headers
-  const tableBorder = '+----------------+----------------+---------+---------+----------+---------+---------+---------+---------+';
+  const tableBorder = '+----------------+----------------+----------+----------+---------+---------+---------+---------+';
   console.log(tableBorder);
-  console.log('| Island 1       | Island 2       | Avg Dur | Max Dur | Avg Dist | Min Dist | Min Gap | Max Gap | Avg Gap |');
+  console.log('| Island 1       | Island 2       | Min Dist | Avg Dist | Avg Dur | Max Dur | Avg Gap | Max Gap |');
   console.log(tableBorder);
   
   // Print each pair as a row in the table
@@ -63,40 +63,34 @@ function printConjunctionStats(stats) {
     let avgDist = '    -    ';
     let minDist = '    -    ';
     let avgGap = '   -    ';
-    let minGap = '   -    ';
     let maxGap = '   -    ';
     
     if (pairStats.totalConjunctions > 0) {
       // Format values for conjunctions
+      minDist = formatDistanceCompact(pairStats.minMinDistance).padStart(8);
+      avgDist = formatDistanceCompact(pairStats.avgMinDistance).padStart(8);
       avgDur = formatDurationCompact(pairStats.avgConjunctionDuration).padStart(7);
       maxDur = formatDurationCompact(pairStats.maxConjunctionDuration).padStart(7);
-      avgDist = formatDistanceCompact(pairStats.avgMinDistance).padStart(8);
-      minDist = formatDistanceCompact(pairStats.minMinDistance).padStart(7);
       avgGap = formatDurationCompact(pairStats.avgTimeBetweenConjunctions).padStart(7);
-      
-      if (pairStats.minTimeBetweenConjunctions !== null) {
-        minGap = formatDurationCompact(pairStats.minTimeBetweenConjunctions).padStart(7);
-      }
       
       if (pairStats.maxTimeBetweenConjunctions !== null) {
         maxGap = formatDurationCompact(pairStats.maxTimeBetweenConjunctions).padStart(7);
       }
     }
     
-    console.log(`| ${island1} | ${island2} | ${avgDur} | ${maxDur} | ${avgDist} | ${minDist} | ${minGap} | ${maxGap} | ${avgGap} |`);
+    console.log(`| ${island1} | ${island2} | ${minDist} | ${avgDist} | ${avgDur} | ${maxDur} | ${avgGap} | ${maxGap} |`);
   });
   
   console.log(tableBorder);
   
   // Add a legend explaining abbreviations
   console.log('\nLEGEND:');
+  console.log('Min Dist = Minimum distance recorded during any conjunction (miles)');
+  console.log('Avg Dist = Average minimum distance during conjunctions (miles)');
   console.log('Avg Dur  = Average duration of conjunctions');
   console.log('Max Dur  = Maximum duration of conjunctions');
-  console.log('Avg Dist = Average minimum distance during conjunctions (miles)');
-  console.log('Min Dist = Minimum distance recorded during any conjunction (miles)');
-  console.log('Min Gap  = Minimum time between consecutive conjunctions');
-  console.log('Max Gap  = Maximum time between consecutive conjunctions');
   console.log('Avg Gap  = Average time between conjunctions, considering full simulation timespan');
+  console.log('Max Gap  = Maximum time between consecutive conjunctions');
 }
 
 // Compact formatting functions for the table
