@@ -26,7 +26,8 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "convert-days": "node scripts/convert-days.js"
+    "convert-days": "node scripts/convert-days.js",
+    "analyze-conjunctions": "node scripts/analyze-conjunctions.js"
   },
   "eslintConfig": {
     "extends": [
@@ -48,6 +49,7 @@
   },
   "devDependencies": {
     "svgexport": "^0.4.2",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "yargs": "^17.7.2"
   }
 }
