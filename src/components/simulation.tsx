@@ -696,6 +696,11 @@ const SkydriftArchipelagoSimulation = () => {
             editIsland={editIsland}
             deleteIsland={deleteIsland}
             calculateMilesRadius={calculateMilesRadius}
+            setIslands={(newIslands) => {
+              simulatorRef.current.setIslands(newIslands);
+              setIslands([...simulatorRef.current.getIslands()]);
+              updateViewportScale();
+            }}
           />
         )}
 

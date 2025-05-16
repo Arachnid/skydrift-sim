@@ -5,9 +5,9 @@
  * Internal simulation time is stored in milliseconds, where 1000ms = 1 day.
  * 
  * For display purposes, we use the following units:
- * - 1 year = 365 days
- * - 1 month = 73 days (uniformly)
- * - 1 day = 24 hours
+ * - 1 year = 365 days (0-indexed)
+ * - 1 month = 73 days (uniformly, 1-indexed)
+ * - 1 day = 24 hours (1-indexed)
  */
 
 /**
@@ -23,11 +23,11 @@ export function formatTime(timestamp: number, includeHours: boolean = true): str
   const totalDays = timestamp / 1000;
   
   // Calculate years, months, days
-  const years = Math.floor(totalDays / 365) + 1; // Start from year 1 instead of 0
+  const years = Math.floor(totalDays / 365); // Years are 0-indexed
   const remainingDaysAfterYears = totalDays % 365;
   
-  const months = Math.floor(remainingDaysAfterYears / 73) + 1; // Start from month 1 instead of 0
-  const days = Math.floor(remainingDaysAfterYears % 73) + 1; // Start from day 1 instead of 0
+  const months = Math.floor(remainingDaysAfterYears / 73) + 1; // Months are 1-indexed
+  const days = Math.floor(remainingDaysAfterYears % 73) + 1; // Days are 1-indexed
   
   // Calculate hours (fractional part of days)
   const hours = Math.floor((totalDays % 1) * 24);
@@ -70,13 +70,13 @@ export function parseTimeString(dateString: string): number | null {
   const hours = match[4] ? parseInt(match[4], 10) : 0;
   
   // Validate ranges
-  if (year < 1 || month < 1 || month > 5 || day < 1 || day > 73 || hours < 0 || hours >= 24) {
+  if (year < 0 || month < 1 || month > 5 || day < 1 || day > 73 || hours < 0 || hours >= 24) {
     return null;
   }
   
   // Convert to total days
-  // Year is 1-indexed, so subtract 1 to get 0-indexed for calculation
-  const daysFromYears = (year - 1) * 365;
+  // Year is 0-indexed for calculation
+  const daysFromYears = year * 365;
   
   // Month is 1-indexed, so subtract 1 to get 0-indexed for calculation
   const daysFromMonths = (month - 1) * 73;
