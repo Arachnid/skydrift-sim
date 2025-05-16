@@ -251,9 +251,11 @@ const ConjunctionsPanel: React.FC<ConjunctionsPanelProps> = ({
     };
   }, [simulator, islands.length, currentTime]);
   
-  // Filter conjunctions to show active and upcoming ones
+  // Filter conjunctions to show active and upcoming ones between visible islands
   const filteredConjunctions = conjunctions.filter(
-    conj => conj.endTime >= currentTime // Filter to show active and upcoming
+    conj => conj.endTime >= currentTime &&
+    islands.find(i => i.id === conj.island1Id)?.visible &&
+    islands.find(i => i.id === conj.island2Id)?.visible // Only include conjunctions between visible islands
   );
   
   // Format distance for display
