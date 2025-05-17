@@ -398,13 +398,13 @@ export default class IslandConfigSearch {
         
         // Calculate error for average gap as a percentage
         if (target.targetAvgGap !== undefined) {
-          // Calculate percentage error: (actual - target) / target * 100
-          const percentageError = Math.abs(
-            (pairStats.avgTimeBetweenConjunctions - target.targetAvgGap) / target.targetAvgGap
-          ) * 100;
+          // Use log ratio for symmetric error: |log(actual/target)| * 100
+          // This treats overestimation and underestimation by the same factor equally
+          const ratio = pairStats.avgTimeBetweenConjunctions / target.targetAvgGap;
+          const logRatioError = Math.abs(Math.log(ratio)) * 100;
           
-          totalScore += percentageError;
-          pairError = percentageError;
+          totalScore += logRatioError;
+          pairError = logRatioError;
         }
         
         errors.set(pairKey, pairError);
@@ -740,13 +740,13 @@ export default class IslandConfigSearch {
         
         // Calculate error for average gap as a percentage
         if (target.targetAvgGap !== undefined) {
-          // Calculate percentage error: (actual - target) / target * 100
-          const percentageError = Math.abs(
-            (pairStats.avgTimeBetweenConjunctions - target.targetAvgGap) / target.targetAvgGap
-          ) * 100;
+          // Use log ratio for symmetric error: |log(actual/target)| * 100
+          // This treats overestimation and underestimation by the same factor equally
+          const ratio = pairStats.avgTimeBetweenConjunctions / target.targetAvgGap;
+          const logRatioError = Math.abs(Math.log(ratio)) * 100;
           
-          totalScore += percentageError;
-          pairError = percentageError;
+          totalScore += logRatioError;
+          pairError = logRatioError;
         }
         
         errors.set(pairKey, pairError);

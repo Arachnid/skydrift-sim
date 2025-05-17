@@ -185,36 +185,50 @@ async function runMain() {
     console.log(`Current best score: ${result.score.toFixed(4)}`);
     
     // Render table of target results
-    const tableBorder = '+----------------+----------------+----------+----------+---------+---------+-----------+';
+    const tableBorder = '+----------------+----------------+---------+---------+-----------+---------+-----------+';
     console.log('\nCONJUNCTION RESULTS:');
     console.log(tableBorder);
-    console.log('| Island 1       | Island 2       | Avg Dist | Max Dur | Avg Gap | Max Gap | Error (%) |');
+    console.log('| Island 1       | Island 2       | Max Dur | Max Gap | Target Gap | Avg Gap | Error     |');
     console.log(tableBorder);
     
-    // Print each pair as a row in the table
-    const pairs = Array.from(result.stats.values());
-    // Filter to only include pairs that are in the conjunctionTargets
-    pairs.filter(pairStats => {
-      const pairKey = getPairKey(pairStats.island1Id, pairStats.island2Id);
-      return result.errorDetails.errors.has(pairKey);
-    }).forEach(pairStats => {
-      const island1 = pairStats.island1Name.padEnd(14).substring(0, 14);
-      const island2 = pairStats.island2Name.padEnd(14).substring(0, 14);
+    // Iterate through targets in config order and find corresponding stats
+    for (const target of config.conjunctionTargets) {
+      const pairKey = getPairKey(target.island1Id, target.island2Id);
       
-      let avgDist = formatDistanceCompact(pairStats.avgMinDistance).padStart(8);
-      let maxDur = formatDurationCompact(pairStats.maxConjunctionDuration).padStart(7);
-      let avgGap = formatDurationCompact(pairStats.avgTimeBetweenConjunctions).padStart(7);
-      let maxGap = pairStats.maxTimeBetweenConjunctions !== null ? 
-        formatDurationCompact(pairStats.maxTimeBetweenConjunctions).padStart(7) : 
+      // Find stats for this pair
+      let foundStats = null;
+      for (const stats of result.stats.values()) {
+        const statsPairKey = getPairKey(stats.island1Id, stats.island2Id);
+        if (statsPairKey === pairKey) {
+          foundStats = stats;
+          break;
+        }
+      }
+      
+      // Skip if no stats found for this pair
+      if (!foundStats) continue;
+      
+      const island1 = foundStats.island1Name.padEnd(14).substring(0, 14);
+      const island2 = foundStats.island2Name.padEnd(14).substring(0, 14);
+      
+      let maxDur = formatDurationCompact(foundStats.maxConjunctionDuration).padStart(7);
+      let maxGap = foundStats.maxTimeBetweenConjunctions !== null ? 
+        formatDurationCompact(foundStats.maxTimeBetweenConjunctions).padStart(7) : 
         '   -    ';
+      let avgGap = formatDurationCompact(foundStats.avgTimeBetweenConjunctions).padStart(7);
       
-      // Get error percentage for this pair
-      const pairKey = getPairKey(pairStats.island1Id, pairStats.island2Id);
+      // Get log-ratio error for this pair
       const error = result.errorDetails.errors.get(pairKey) || 0;
       const errorStr = error.toFixed(2).padStart(7);
       
-      console.log(`| ${island1} | ${island2} | ${avgDist} | ${maxDur} | ${avgGap} | ${maxGap} | ${errorStr}% |`);
-    });
+      // Get target gap from configuration
+      let targetGap = '   -    ';
+      if (target.targetAvgGap !== undefined) {
+        targetGap = formatDurationCompact(target.targetAvgGap).padStart(9);
+      }
+      
+      console.log(`| ${island1} | ${island2} | ${maxDur} | ${maxGap} | ${targetGap} | ${avgGap} | ${errorStr}   |`);
+    }
     
     console.log(tableBorder);
     
@@ -421,7 +435,7 @@ async function runMain() {
               const tempStr = progress.temperature ? progress.temperature.toFixed(1).padStart(8) : '    -    ';
               const score = result ? result.score.toFixed(4).padStart(10) : '    -    ';
               
-              console.log(`| ${String(i).padEnd(6)} | ${progressPct.toFixed(1).padStart(7)}% | ${tempStr} | ${score} |`);
+              console.log(`| ${String(i).padEnd(6)} | ${progressPct.toFixed(1).padStart(8)}% | ${tempStr} | ${score} |`);
             }
             
             console.log(workerTable);
@@ -429,36 +443,50 @@ async function runMain() {
             // Show best result details if available
             if (currentBestResult && currentBestResult.stats) {
               // Render table of target results
-              const tableBorder = '+----------------+----------------+----------+----------+---------+---------+-----------+';
+              const tableBorder = '+----------------+----------------+---------+---------+------------+---------+-----------+';
               console.log('\nCONJUNCTION RESULTS (BEST SO FAR):');
               console.log(tableBorder);
-              console.log('| Island 1       | Island 2       | Avg Dist | Max Dur | Avg Gap | Max Gap | Error (%) |');
+              console.log('| Island 1       | Island 2       | Max Dur | Max Gap | Target Gap | Avg Gap | Error     |');
               console.log(tableBorder);
               
-              // Print each pair as a row in the table
-              const pairs = Array.from(currentBestResult.stats.values());
-              // Filter to only include pairs that are in the conjunctionTargets
-              pairs.filter(pairStats => {
-                const pairKey = getPairKey(pairStats.island1Id, pairStats.island2Id);
-                return currentBestResult.errorDetails.errors.has(pairKey);
-              }).forEach(pairStats => {
-                const island1 = pairStats.island1Name.padEnd(14).substring(0, 14);
-                const island2 = pairStats.island2Name.padEnd(14).substring(0, 14);
+              // Iterate through targets in config order and find corresponding stats
+              for (const target of config.conjunctionTargets) {
+                const pairKey = getPairKey(target.island1Id, target.island2Id);
                 
-                let avgDist = formatDistanceCompact(pairStats.avgMinDistance).padStart(8);
-                let maxDur = formatDurationCompact(pairStats.maxConjunctionDuration).padStart(7);
-                let avgGap = formatDurationCompact(pairStats.avgTimeBetweenConjunctions).padStart(7);
-                let maxGap = pairStats.maxTimeBetweenConjunctions !== null ? 
-                  formatDurationCompact(pairStats.maxTimeBetweenConjunctions).padStart(7) : 
+                // Find stats for this pair
+                let foundStats = null;
+                for (const stats of currentBestResult.stats.values()) {
+                  const statsPairKey = getPairKey(stats.island1Id, stats.island2Id);
+                  if (statsPairKey === pairKey) {
+                    foundStats = stats;
+                    break;
+                  }
+                }
+                
+                // Skip if no stats found for this pair
+                if (!foundStats) continue;
+                
+                const island1 = foundStats.island1Name.padEnd(14).substring(0, 14);
+                const island2 = foundStats.island2Name.padEnd(14).substring(0, 14);
+                
+                let maxDur = formatDurationCompact(foundStats.maxConjunctionDuration).padStart(7);
+                let maxGap = foundStats.maxTimeBetweenConjunctions !== null ? 
+                  formatDurationCompact(foundStats.maxTimeBetweenConjunctions).padStart(7) : 
                   '   -    ';
+                let avgGap = formatDurationCompact(foundStats.avgTimeBetweenConjunctions).padStart(7);
                 
-                // Get error percentage for this pair
-                const pairKey = getPairKey(pairStats.island1Id, pairStats.island2Id);
+                // Get log-ratio error for this pair
                 const error = currentBestResult.errorDetails.errors.get(pairKey) || 0;
                 const errorStr = error.toFixed(2).padStart(7);
                 
-                console.log(`| ${island1} | ${island2} | ${avgDist} | ${maxDur} | ${avgGap} | ${maxGap} | ${errorStr}% |`);
-              });
+                // Get target gap from configuration
+                let targetGap = '   -    ';
+                if (target.targetAvgGap !== undefined) {
+                  targetGap = formatDurationCompact(target.targetAvgGap).padStart(10);
+                }
+                
+                console.log(`| ${island1} | ${island2} | ${maxDur} | ${maxGap} | ${targetGap} | ${avgGap} | ${errorStr}   |`);
+              }
               
               console.log(tableBorder);
             }

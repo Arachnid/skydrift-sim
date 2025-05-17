@@ -13,7 +13,7 @@
   "epicycleBounds": [
     {
       "minPeriod": 100,
-      "maxPeriod": 800,
+      "maxPeriod": 1000,
       "allowNegative": true
     },
     {

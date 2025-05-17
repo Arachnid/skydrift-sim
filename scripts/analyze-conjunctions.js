@@ -37,14 +37,20 @@ function formatDistance(miles) {
 }
 
 // Function to print conjunction stats in a readable format
-function printConjunctionStats(stats) {
+function printConjunctionStats(stats, islands) {
   // Print overall summary
   console.log('\n=== CONJUNCTION ANALYSIS SUMMARY ===\n');
   console.log(`Analyzed ${stats.size} island pairs\n`);
   
-  // Sort pairs by number of conjunctions (most frequent first)
+  // Sort pairs by island IDs
   const sortedPairs = Array.from(stats.values())
-    .sort((a, b) => b.totalConjunctions - a.totalConjunctions);
+    .sort((a, b) => {
+      // Compare first islands by ID
+      if (a.island1Id !== b.island1Id) return a.island1Id - b.island1Id;
+      
+      // If first islands have the same ID, compare second islands by ID
+      return a.island2Id - b.island2Id;
+    });
   
   // Create ASCII table with abbreviated column headers
   const tableBorder = '+----------------+----------------+----------+----------+---------+---------+---------+---------+';
@@ -93,11 +99,11 @@ function printConjunctionStats(stats) {
   console.log('Max Gap  = Maximum time between consecutive conjunctions');
 
   // Print per-island conjunction statistics
-  printPerIslandConjunctionStats(stats);
+  printPerIslandConjunctionStats(stats, islands);
 }
 
 // Function to print how often each island has a conjunction with any other island
-function printPerIslandConjunctionStats(stats) {
+function printPerIslandConjunctionStats(stats, islands) {
   // Create a map to store per-island stats
   const islandStats = new Map();
   
@@ -111,6 +117,7 @@ function printPerIslandConjunctionStats(stats) {
     // Initialize island stats if needed
     if (!islandStats.has(pairStats.island1Name)) {
       islandStats.set(pairStats.island1Name, {
+        id: pairStats.island1Id,
         name: pairStats.island1Name,
         totalConjunctions: 0,
         uniquePartners: new Set(),
@@ -120,6 +127,7 @@ function printPerIslandConjunctionStats(stats) {
     
     if (!islandStats.has(pairStats.island2Name)) {
       islandStats.set(pairStats.island2Name, {
+        id: pairStats.island2Id,
         name: pairStats.island2Name,
         totalConjunctions: 0,
         uniquePartners: new Set(),
@@ -166,9 +174,9 @@ function printPerIslandConjunctionStats(stats) {
     }
   });
   
-  // Sort islands by total number of conjunctions (most frequent first)
+  // Sort islands by their IDs directly
   const sortedIslands = Array.from(islandStats.values())
-    .sort((a, b) => b.totalConjunctions - a.totalConjunctions);
+    .sort((a, b) => a.id - b.id);
   
   // Print per-island table
   console.log('\n\n=== PER-ISLAND CONJUNCTION SUMMARY ===\n');
@@ -286,7 +294,7 @@ async function analyzeConjunctions(configPath, startDate, durationDays) {
     console.log(`Analysis completed in ${((endTime - startTime) / 1000).toFixed(1)} seconds`);
     
     // Print the results
-    printConjunctionStats(conjunctionStats);
+    printConjunctionStats(conjunctionStats, islands);
     
   } catch (error) {
     console.error('Error analyzing conjunctions:', error);
