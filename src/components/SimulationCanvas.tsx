@@ -30,6 +30,11 @@ interface SimulationCanvasProps {
   viewportScale: number;
   onResize: (width: number, height: number) => void;
   toggleIslandVisibility: (islandId: number) => void;
+  customProps?: {
+    printMode?: boolean;
+    showLegend?: boolean;
+    backgroundColor?: string;
+  };
 }
 
 const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
@@ -42,7 +47,8 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
   activeJourney,
   viewportScale,
   onResize,
-  toggleIslandVisibility
+  toggleIslandVisibility,
+  customProps
 }) => {
   const theme = useTheme();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -106,8 +112,8 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
     // Set simulator time
     simulator.setTime(time);
     
-    // Clear canvas with slightly off-white background for better contrast
-    ctx.fillStyle = "#fafafa"; // MUI background.default
+    // Clear canvas with specified background color or default
+    ctx.fillStyle = customProps?.backgroundColor || "#fafafa"; // Use custom background color or default MUI background
     ctx.fillRect(0, 0, canvas.width, canvas.height);
         
     // Draw epicycle circles and orbits
@@ -196,12 +202,20 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       
       // Draw island circle with shadow for depth
       ctx.save();
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-      ctx.shadowBlur = 4;
-      ctx.shadowOffsetX = 1;
-      ctx.shadowOffsetY = 1;
       
-      ctx.fillStyle = island.color;
+      // In print mode, use monochrome styling
+      if (customProps?.printMode) {
+        // No shadow for cleaner print
+        ctx.fillStyle = "#000000"; // Black for print
+      } else {
+        // Regular styling with shadow effect
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+        ctx.fillStyle = island.color;
+      }
+      
       ctx.beginPath();
       ctx.arc(position.x * viewportScale + centerXRef.current, position.y * viewportScale + centerYRef.current, island.radius, 0, 2 * Math.PI);
       ctx.fill();
@@ -234,8 +248,11 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
     });
     
     // Draw legend
-    drawLegend(ctx);
-  }, [simulator, islands, time, showOrbits, showTrails, trailLength, activeJourney, viewportScale, theme]);
+    const shouldShowLegend = customProps?.showLegend !== false;
+    if (shouldShowLegend) {
+      drawLegend(ctx);
+    }
+  }, [simulator, islands, time, showOrbits, showTrails, trailLength, activeJourney, viewportScale, theme, customProps]);
 
   // Helper function to draw active conjunctions
   const drawActiveConjunctions = (ctx: CanvasRenderingContext2D): void => {
@@ -354,8 +371,9 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
     
     // Draw the future trail
     if (futureTrail.length >= 2) {
-      ctx.strokeStyle = island.color;
-      ctx.lineWidth = 2.5;
+      // Use monochrome for print mode, island colors otherwise
+      ctx.strokeStyle = customProps?.printMode ? "#cccccc" : island.color;
+      ctx.lineWidth = customProps?.printMode ? 1.5 : 2.5;
       ctx.globalAlpha = 0.6;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
@@ -370,10 +388,10 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       ctx.stroke();
       
       // Draw tick marks - more modern style
-      ctx.fillStyle = island.color;
+      ctx.fillStyle = customProps?.printMode ? "#000000" : island.color;
       tickPoints.forEach((point, i) => {
         ctx.beginPath();
-        ctx.arc(point.x, point.y, 4, 0, 2 * Math.PI);
+        ctx.arc(point.x, point.y, customProps?.printMode ? 3 : 4, 0, 2 * Math.PI);
         ctx.fill();
       });
       
@@ -398,7 +416,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       
       if (futurePath.length > 1) {
         // Draw the future path
-        ctx.strokeStyle = "#2e7d32"; // MUI green
+        ctx.strokeStyle = customProps?.printMode ? "#333333" : "#2e7d32"; // MUI green or dark gray for print
         ctx.lineWidth = 2.5;
         ctx.setLineDash([6, 4]); // Dashed line
         ctx.globalAlpha = 0.75;
@@ -422,7 +440,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       }
       
       // Draw current position marker
-      ctx.fillStyle = "#2e7d32"; // MUI green
+      ctx.fillStyle = customProps?.printMode ? "#000000" : "#2e7d32"; // MUI green or black for print
       ctx.beginPath();
       ctx.arc(
         currentPosition.x * viewportScale + centerXRef.current, 
@@ -477,7 +495,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
     
     if (sourceIsland && destIsland) {
       // Draw the journey path
-      ctx.strokeStyle = "#795548"; // MUI brown color
+      ctx.strokeStyle = customProps?.printMode ? "#666666" : "#795548"; // MUI brown color or gray for print
       ctx.lineWidth = 2.5;
       ctx.setLineDash([6, 4]); // Dashed line with MUI styling
       ctx.globalAlpha = 0.75;
