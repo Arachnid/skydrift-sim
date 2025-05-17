@@ -555,10 +555,6 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
   // Update the drawLegend function to store clickable areas and handle clicks
   const drawLegend = (ctx: CanvasRenderingContext2D): void => {
     const visibleIslands = islands.filter(island => island.visible);
-    if (visibleIslands.length === 0) return;
-    
-    // Get active journeys
-    const activeJourneys = simulator.getActiveJourneys();
     
     // MUI-styled legend with more rounded corners and subtle shadow
     const padding = 16;
