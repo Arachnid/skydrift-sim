@@ -375,11 +375,6 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
         ctx.beginPath();
         ctx.arc(point.x, point.y, 4, 0, 2 * Math.PI);
         ctx.fill();
-        
-        // Add day number label with better typography
-        const dayNumber = ((i + 1) * 5).toString();
-        ctx.font = "bold 11px Roboto, Arial, sans-serif";
-        ctx.fillText(dayNumber, point.x + 6, point.y - 6);
       });
       
       ctx.globalAlpha = 1;
@@ -538,13 +533,6 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
             4, 0, 2 * Math.PI
           );
           ctx.fill();
-          
-          // Add day label with better typography
-          ctx.globalAlpha = 0.85;
-          ctx.fillText(`D+${day}`, 
-            marker.x * viewportScale + centerXRef.current + 6, 
-            marker.y * viewportScale + centerYRef.current - 6
-          );
         }
       }
       
@@ -647,11 +635,11 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       ctx.font = "500 13px Roboto, Arial, sans-serif"; // MUI typography - medium weight
       ctx.fillText(island.name, legendX + padding + pillWidth + 10, y + 4);
       
-      // Draw day and speed info with MUI typography style
-      ctx.font = "400 12px Roboto, Arial, sans-serif"; // MUI typography - regular weight
+      // Draw speed info with MUI typography style
+      ctx.font = "400 12px Roboto, Arial, sans-serif";
       ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; // MUI secondary text color
       ctx.fillText(
-        `Day ${dayInCycle.toFixed(0)} / ${orbitalPeriod.toFixed(0)} (${velocity.speed.toFixed(0)} mi/d)`, 
+        `${velocity.speed.toFixed(0)} mi/d`, 
         legendX + padding + pillWidth + 10, 
         y + 20
       );

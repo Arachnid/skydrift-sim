@@ -584,7 +584,6 @@ const SkydriftArchipelagoSimulation = () => {
           setShowOrbits={setShowOrbits}
           showTrails={showTrails}
           setShowTrails={setShowTrails}
-          calculateSystemPeriod={() => simulatorRef.current.calculateSystemPeriod()}
           resetSimulation={resetSimulation}
           jumpTime={jumpTime}
         />

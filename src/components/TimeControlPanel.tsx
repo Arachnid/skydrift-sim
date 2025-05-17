@@ -29,7 +29,6 @@ interface TimeControlPanelProps {
   setShowOrbits: (showOrbits: boolean) => void;
   showTrails: boolean;
   setShowTrails: (showTrails: boolean) => void;
-  calculateSystemPeriod: () => number;
   resetSimulation: () => void;
   jumpTime: (amount: number) => void;
 }
@@ -45,7 +44,6 @@ const TimeControlPanel: React.FC<TimeControlPanelProps> = ({
   setShowOrbits,
   showTrails,
   setShowTrails,
-  calculateSystemPeriod,
   resetSimulation,
   jumpTime
 }) => {
@@ -60,10 +58,6 @@ const TimeControlPanel: React.FC<TimeControlPanelProps> = ({
   useEffect(() => {
     setDateInput(formattedTime);
   }, [time]);
-  
-  // Format the system period
-  const systemPeriod = calculateSystemPeriod();
-  const formattedSystemPeriod = formatDuration(systemPeriod);
   
   // Handle date input change
   const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,12 +201,6 @@ const TimeControlPanel: React.FC<TimeControlPanelProps> = ({
           helperText={dateError || "Format: yyyy-mm-dd [h]h"}
           error={!!dateError}
         />
-        
-        {/* Total System Period Display */}
-        <Paper sx={{ ml: 2, px: 2, py: 1, backgroundColor: 'primary.light', color: 'primary.contrastText' }} variant="outlined">
-          <Typography variant="caption" fontWeight="medium">System Period: </Typography>
-          <Typography variant="caption">{formattedSystemPeriod}</Typography>
-        </Paper>
       </Stack>
     </Stack>
   );
