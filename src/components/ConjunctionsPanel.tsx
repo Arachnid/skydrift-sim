@@ -139,10 +139,8 @@ const ConjunctionsPanel: React.FC<ConjunctionsPanelProps> = ({
           // Do a full recalculation for max look ahead period
           const allConjunctions = simulator.calculateUpcomingConjunctions(maxLookAheadDays);
           
-          // Take only the first MAX_CONJUNCTIONS
-          const limitedConjunctions = allConjunctions.slice(0, MAX_CONJUNCTIONS);
-          
-          setConjunctions(limitedConjunctions);
+          // Store all conjunctions without limiting
+          setConjunctions(allConjunctions);
           
           // Update calculation reference
           lastCalculationRef.current = {
@@ -182,10 +180,8 @@ const ConjunctionsPanel: React.FC<ConjunctionsPanelProps> = ({
           ...newUniqueConjunctions
         ].filter(conj => conj.endTime >= currentTime - 86400); // Keep conjunctions that ended within the last day
         
-        // Sort and limit to MAX_CONJUNCTIONS
-        const sortedConjunctions = updatedConjunctions
-          .sort((a, b) => a.startTime - b.startTime)
-          .slice(0, MAX_CONJUNCTIONS);
+        // Sort all conjunctions by start time without limiting
+        const sortedConjunctions = updatedConjunctions.sort((a, b) => a.startTime - b.startTime);
         
         // Update the conjunctions state
         setConjunctions(sortedConjunctions);
@@ -229,10 +225,8 @@ const ConjunctionsPanel: React.FC<ConjunctionsPanelProps> = ({
       // Calculate all potential conjunctions within the look ahead period
       const allConjunctions = simulator.calculateUpcomingConjunctions(maxLookAheadDays);
       
-      // Take only the first MAX_CONJUNCTIONS
-      const limitedConjunctions = allConjunctions.slice(0, MAX_CONJUNCTIONS);
-      
-      setConjunctions(limitedConjunctions);
+      // Store all conjunctions without limiting
+      setConjunctions(allConjunctions);
       
       // Update reference
       lastCalculationRef.current = {
@@ -252,11 +246,14 @@ const ConjunctionsPanel: React.FC<ConjunctionsPanelProps> = ({
   }, [simulator, islands.length, currentTime]);
   
   // Filter conjunctions to show active and upcoming ones between visible islands
-  const filteredConjunctions = conjunctions.filter(
-    conj => conj.endTime >= currentTime &&
-    islands.find(i => i.id === conj.island1Id)?.visible &&
-    islands.find(i => i.id === conj.island2Id)?.visible // Only include conjunctions between visible islands
-  );
+  const filteredConjunctions = conjunctions
+    .filter(conj => 
+      conj.endTime >= currentTime &&
+      islands.find(i => i.id === conj.island1Id)?.visible &&
+      islands.find(i => i.id === conj.island2Id)?.visible // Only include conjunctions between visible islands
+    )
+    .sort((a, b) => a.startTime - b.startTime)
+    .slice(0, MAX_CONJUNCTIONS); // Apply limit AFTER filtering
   
   // Format distance for display
   const formatDistance = (distance: number): string => {
@@ -284,7 +281,7 @@ const ConjunctionsPanel: React.FC<ConjunctionsPanelProps> = ({
       
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         A conjunction occurs when two islands come within 50 miles of each other.
-        Showing the next {MAX_CONJUNCTIONS} conjunctions (up to {MAX_YEARS} years ahead).
+        Showing the next {MAX_CONJUNCTIONS} conjunctions between visible islands (up to {MAX_YEARS} years ahead).
       </Typography>
       
       <TableContainer component={Paper} sx={{ mb: 2 }}>

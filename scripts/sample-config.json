@@ -196,6 +196,76 @@
       "island1Id": 11,
       "island2Id": 1,
       "targetAvgGap": 3650
+    },
+    {
+      "island1Id": 5,
+      "island2Id": 3,
+      "targetAvgGap": 3650
+    },
+    {
+      "island1Id": 5,
+      "island2Id": 4,
+      "targetAvgGap": 3650
+    },
+    {
+      "island1Id": 6,
+      "island2Id": 3,
+      "targetAvgGap": 3650
+    },
+    {
+      "island1Id": 6,
+      "island2Id": 4,
+      "targetAvgGap": 3650
+    },
+    {
+      "island1Id": 7,
+      "island2Id": 3,
+      "targetAvgGap": 3650
+    },
+    {
+      "island1Id": 7,
+      "island2Id": 4,
+      "targetAvgGap": 3650
+    },
+    {
+      "island1Id": 8,
+      "island2Id": 2,
+      "targetAvgGap": 3650
+    },
+    {
+      "island1Id": 8,
+      "island2Id": 4,
+      "targetAvgGap": 3650
+    },
+    {
+      "island1Id": 9,
+      "island2Id": 2,
+      "targetAvgGap": 3650
+    },
+    {
+      "island1Id": 9,
+      "island2Id": 4,
+      "targetAvgGap": 3650
+    },
+    {
+      "island1Id": 10,
+      "island2Id": 2,
+      "targetAvgGap": 3650
+    },
+    {
+      "island1Id": 10,
+      "island2Id": 3,
+      "targetAvgGap": 3650
+    },
+    {
+      "island1Id": 11,
+      "island2Id": 2,
+      "targetAvgGap": 3650
+    },
+    {
+      "island1Id": 11,
+      "island2Id": 3,
+      "targetAvgGap": 3650
     }
   ],
   "analysisParams": {

@@ -91,6 +91,117 @@ function printConjunctionStats(stats) {
   console.log('Max Dur  = Maximum duration of conjunctions');
   console.log('Avg Gap  = Average time between conjunctions, considering full simulation timespan');
   console.log('Max Gap  = Maximum time between consecutive conjunctions');
+
+  // Print per-island conjunction statistics
+  printPerIslandConjunctionStats(stats);
+}
+
+// Function to print how often each island has a conjunction with any other island
+function printPerIslandConjunctionStats(stats) {
+  // Create a map to store per-island stats
+  const islandStats = new Map();
+  
+  // First pass: collect all conjunction times for each island
+  Array.from(stats.values()).forEach(pairStats => {
+    // Only process pairs with conjunctions
+    if (pairStats.totalConjunctions === 0 || !pairStats.allConjunctions) {
+      return;
+    }
+    
+    // Initialize island stats if needed
+    if (!islandStats.has(pairStats.island1Name)) {
+      islandStats.set(pairStats.island1Name, {
+        name: pairStats.island1Name,
+        totalConjunctions: 0,
+        uniquePartners: new Set(),
+        conjunctionTimes: []
+      });
+    }
+    
+    if (!islandStats.has(pairStats.island2Name)) {
+      islandStats.set(pairStats.island2Name, {
+        name: pairStats.island2Name,
+        totalConjunctions: 0,
+        uniquePartners: new Set(),
+        conjunctionTimes: []
+      });
+    }
+    
+    const island1Stats = islandStats.get(pairStats.island1Name);
+    const island2Stats = islandStats.get(pairStats.island2Name);
+    
+    // Add conjunction data
+    island1Stats.totalConjunctions += pairStats.totalConjunctions;
+    island1Stats.uniquePartners.add(pairStats.island2Name);
+    
+    island2Stats.totalConjunctions += pairStats.totalConjunctions;
+    island2Stats.uniquePartners.add(pairStats.island1Name);
+    
+    // Add all conjunction start times to both islands
+    pairStats.allConjunctions.forEach(conjunction => {
+      island1Stats.conjunctionTimes.push(conjunction.startTime);
+      island2Stats.conjunctionTimes.push(conjunction.startTime);
+    });
+  });
+  
+  // Second pass: calculate statistics based on all conjunction times
+  islandStats.forEach(islandStat => {
+    // Sort conjunction times chronologically
+    islandStat.conjunctionTimes.sort((a, b) => a - b);
+    
+    // Calculate gaps between conjunctions
+    const gaps = [];
+    for (let i = 1; i < islandStat.conjunctionTimes.length; i++) {
+      const gap = (islandStat.conjunctionTimes[i] - islandStat.conjunctionTimes[i-1]) / 1000; // Convert ms to days
+      gaps.push(gap);
+    }
+    
+    // Calculate gap statistics
+    if (gaps.length > 0) {
+      islandStat.avgGap = gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length;
+      islandStat.maxGap = Math.max(...gaps);
+    } else {
+      islandStat.avgGap = 0;
+      islandStat.maxGap = 0;
+    }
+  });
+  
+  // Sort islands by total number of conjunctions (most frequent first)
+  const sortedIslands = Array.from(islandStats.values())
+    .sort((a, b) => b.totalConjunctions - a.totalConjunctions);
+  
+  // Print per-island table
+  console.log('\n\n=== PER-ISLAND CONJUNCTION SUMMARY ===\n');
+  
+  // Create ASCII table for per-island stats
+  const islandTableBorder = '+----------------+-----------+---------+---------+------------+';
+  console.log(islandTableBorder);
+  console.log('| Island Name    | Total Conj | Avg Gap | Max Gap | Partners  |');
+  console.log(islandTableBorder);
+  
+  sortedIslands.forEach(islandStat => {
+    const islandName = islandStat.name.padEnd(14).substring(0, 14);
+    const totalConjunctions = `${islandStat.totalConjunctions}`.padStart(9);
+    const partnerCount = `${islandStat.uniquePartners.size}`.padStart(10);
+    
+    // Format gap values
+    let avgGap = '   -    ';
+    let maxGap = '   -    ';
+    
+    if (islandStat.totalConjunctions > 1) {
+      avgGap = formatDurationCompact(islandStat.avgGap).padStart(7);
+      maxGap = formatDurationCompact(islandStat.maxGap).padStart(7);
+    }
+    
+    console.log(`| ${islandName} | ${totalConjunctions} | ${avgGap} | ${maxGap} | ${partnerCount} |`);
+  });
+  
+  console.log(islandTableBorder);
+  console.log('\nLEGEND:');
+  console.log('Total Conj = Total number of conjunctions with any other island');
+  console.log('Avg Gap    = Average time between consecutive conjunctions with any island');
+  console.log('Max Gap    = Maximum time between consecutive conjunctions with any island');
+  console.log('Partners   = Number of unique islands this island has conjunctions with');
 }
 
 // Compact formatting functions for the table
