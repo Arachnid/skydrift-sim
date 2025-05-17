@@ -21,13 +21,13 @@
     "radius": 8,
     "cycles": [
       {
-        "period": 328
+        "period": -350
       },
       {
-        "period": -30
+        "period": -70
       },
       {
-        "period": -30
+        "period": -31
       }
     ],
     "visible": true
@@ -39,10 +39,10 @@
     "radius": 8,
     "cycles": [
       {
-        "period": -296
+        "period": 346
       },
       {
-        "period": -30
+        "period": -37
       },
       {
         "period": -30
@@ -57,13 +57,13 @@
     "radius": 8,
     "cycles": [
       {
-        "period": 364
+        "period": -333
       },
       {
-        "period": -133
+        "period": 68
       },
       {
-        "period": 48
+        "period": -37
       }
     ],
     "visible": true
@@ -75,13 +75,13 @@
     "radius": 6,
     "cycles": [
       {
-        "period": -391
+        "period": 764
       },
       {
-        "period": -165
+        "period": -74
       },
       {
-        "period": -123
+        "period": 30
       }
     ],
     "visible": true
@@ -93,13 +93,13 @@
     "radius": 6,
     "cycles": [
       {
-        "period": 415
+        "period": -851
       },
       {
-        "period": 292
+        "period": -97
       },
       {
-        "period": 167
+        "period": -46
       }
     ],
     "visible": true
@@ -111,13 +111,13 @@
     "radius": 6,
     "cycles": [
       {
-        "period": 453
+        "period": 805
       },
       {
-        "period": 269
+        "period": 188
       },
       {
-        "period": 170
+        "period": -30
       }
     ],
     "visible": true
@@ -129,13 +129,13 @@
     "radius": 6,
     "cycles": [
       {
-        "period": 551
+        "period": -706
       },
       {
-        "period": 180
+        "period": 195
       },
       {
-        "period": 39
+        "period": -146
       }
     ],
     "visible": true
@@ -147,13 +147,13 @@
     "radius": 6,
     "cycles": [
       {
-        "period": 545
+        "period": -781
       },
       {
-        "period": -111
+        "period": 382
       },
       {
-        "period": -36
+        "period": -254
       }
     ],
     "visible": true
@@ -165,13 +165,13 @@
     "radius": 6,
     "cycles": [
       {
-        "period": 311
+        "period": 910
       },
       {
-        "period": -64
+        "period": -515
       },
       {
-        "period": 38
+        "period": -52
       }
     ],
     "visible": true
@@ -183,13 +183,13 @@
     "radius": 6,
     "cycles": [
       {
-        "period": 100
+        "period": -774
       },
       {
-        "period": -37
+        "period": -505
       },
       {
-        "period": -30
+        "period": -230
       }
     ],
     "visible": true
