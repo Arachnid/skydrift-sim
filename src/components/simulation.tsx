@@ -37,12 +37,14 @@ import DirectionsBoatIcon from '@mui/icons-material/DirectionsBoat';
 import TerrainIcon from '@mui/icons-material/Terrain';
 import UpdateIcon from '@mui/icons-material/Update';
 import FilterCenterFocusIcon from '@mui/icons-material/FilterCenterFocus';
+import PrintIcon from '@mui/icons-material/Print';
 import SkydriftArchipelagoSimulator, { Island, Epicycle, Position, Journey, Conjunction } from '../utils/sim';
 import TimeControlPanel from './TimeControlPanel';
 import SimulationCanvas from './SimulationCanvas';
 import IslandEditor from './IslandEditor';
 import JourneyPlanner from './JourneyPlanner';
 import ConjunctionsPanel from './ConjunctionsPanel';
+import PrintableSkyChartButton from './PrintableSkyChartButton';
 // Import default islands from the JSON file
 import defaultIslandsData from '../data/defaultIslands.json';
 
@@ -583,6 +585,20 @@ const SkydriftArchipelagoSimulation = () => {
           resetSimulation={resetSimulation}
           jumpTime={jumpTime}
         />
+        
+        {/* Add Print Chart Button */}
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <PrintableSkyChartButton
+            simulator={simulatorRef.current}
+            islands={islands}
+            time={time}
+            showTrails={showTrails}
+            trailLength={trailLength}
+            activeJourney={activeJourney}
+            activeJourneys={activeJourneys}
+            viewportScale={viewportScale}
+          />
+        </Box>
 
         {/* Canvas */}
         <SimulationCanvas
