@@ -395,10 +395,6 @@ const SkydriftArchipelagoSimulation = () => {
   };
   
   // Keep functions that are used in the UI
-  const calculateSystemPeriod = (): number => {
-    return simulatorRef.current.calculateSystemPeriod();
-  };
-
   const calculateOrbitalPeriod = (cycles: Epicycle[]): number => {
     return simulatorRef.current.calculateOrbitalPeriod(cycles);
   };

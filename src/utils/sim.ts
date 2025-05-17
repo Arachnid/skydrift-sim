@@ -399,17 +399,6 @@ export default class SkydriftArchipelagoSimulator {
     return Math.abs(a * b) / this.gcd(a, b);
   }
 
-  // Calculate the total system period (LCM of all island periods)
-  calculateSystemPeriod(): number {
-    if (this.islands.length === 0) return 0;
-    
-    // Get the orbital period for each island
-    const periods = this.islands.map(island => this.calculateOrbitalPeriod(island.cycles));
-    
-    // Calculate the LCM of all periods
-    return periods.reduce((acc, period) => this.lcm(acc, period), periods[0]);
-  }
-
   // Calculate orbital period as LCM of all epicycle periods
   calculateOrbitalPeriod(cycles: Epicycle[]): number {
     if (cycles.length === 0) return 0;
