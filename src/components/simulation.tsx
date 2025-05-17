@@ -111,8 +111,7 @@ const SkydriftArchipelagoSimulation = () => {
       }
     });
     
-    // Set max radius to 80% of distance to edge
-    const targetPixelRadius = Math.min(canvasSize.width / 2, canvasSize.height / 2) * 0.8;
+    const targetPixelRadius = Math.min(canvasSize.width / 2, canvasSize.height / 2);
     
     // Calculate viewport scale to fit largest island orbit on screen
     if (maxRadiusSum > 0) {
