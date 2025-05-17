@@ -17,11 +17,13 @@
       "allowNegative": true
     },
     {
+      "minPeriod": 30,
       "minProportion": 0.1,
       "maxProportion": 0.75,
       "allowNegative": true
     },
     {
+      "minPeriod": 30,
       "minProportion": 0.1,
       "maxProportion": 0.75,
       "allowNegative": true
@@ -113,87 +115,87 @@
     {
       "island1Id": 1,
       "island2Id": 2,
-      "targetAvgGap": 180
+      "targetAvgGap": 365
     },
     {
       "island1Id": 1,
       "island2Id": 3,
-      "targetAvgGap": 180
+      "targetAvgGap": 365
     },
     {
       "island1Id": 1,
       "island2Id": 4,
-      "targetAvgGap": 180
+      "targetAvgGap": 365
     },
     {
       "island1Id": 2,
       "island2Id": 5,
-      "targetAvgGap": 540
+      "targetAvgGap": 730
     },
     {
       "island1Id": 2,
       "island2Id": 6,
-      "targetAvgGap": 540
+      "targetAvgGap": 730
     },
     {
       "island1Id": 2,
       "island2Id": 7,
-      "targetAvgGap": 540
+      "targetAvgGap": 730
     },
     {
       "island1Id": 3,
       "island2Id": 8,
-      "targetAvgGap": 540
+      "targetAvgGap": 730
     },
     {
       "island1Id": 3,
       "island2Id": 9,
-      "targetAvgGap": 540
+      "targetAvgGap": 730
     },
     {
       "island1Id": 4,
       "island2Id": 10,
-      "targetAvgGap": 540
+      "targetAvgGap": 730
     },
     {
       "island1Id": 4,
       "island2Id": 11,
-      "targetAvgGap": 540
+      "targetAvgGap": 730
     },
     {
       "island1Id": 5,
       "island2Id": 1,
-      "targetAvgGap": 3600
+      "targetAvgGap": 3650
     },
     {
       "island1Id": 6,
       "island2Id": 1,
-      "targetAvgGap": 3600
+      "targetAvgGap": 3650
     },
     {
       "island1Id": 7,
       "island2Id": 1,
-      "targetAvgGap": 3600
+      "targetAvgGap": 3650
     },
     {
       "island1Id": 8,
       "island2Id": 1,
-      "targetAvgGap": 3600
+      "targetAvgGap": 3650
     },
     {
       "island1Id": 9,
       "island2Id": 1,
-      "targetAvgGap": 3600
+      "targetAvgGap": 3650
     },
     {
       "island1Id": 10,
       "island2Id": 1,
-      "targetAvgGap": 3600
+      "targetAvgGap": 3650
     },
     {
       "island1Id": 11,
       "island2Id": 1,
-      "targetAvgGap": 3600
+      "targetAvgGap": 3650
     }
   ],
   "analysisParams": {

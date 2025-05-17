@@ -114,9 +114,10 @@ export default class IslandConfigSearch {
       const bounds = this.epicycleBounds[i];
       
       // Get actual min/max periods, handling proportional bounds
-      let actualMinPeriod: number;
-      let actualMaxPeriod: number;
+      let actualMinPeriod: number | undefined;
+      let actualMaxPeriod: number | undefined;
       
+      // Calculate min period from proportion if available
       if (bounds.minProportion !== undefined) {
         if (i === 0) {
           throw new Error(`Cannot use minProportion for the first epicycle (index 0) as there is no parent`);
@@ -130,12 +131,23 @@ export default class IslandConfigSearch {
         }
         
         actualMinPeriod = bounds.minProportion * parentPeriod;
-      } else if (bounds.minPeriod !== undefined) {
-        actualMinPeriod = bounds.minPeriod;
-      } else {
+      }
+      
+      // If direct minPeriod is available, compare with proportion-based value and take the larger
+      if (bounds.minPeriod !== undefined) {
+        actualMinPeriod = actualMinPeriod !== undefined 
+          ? Math.max(bounds.minPeriod, actualMinPeriod) 
+          : bounds.minPeriod;
+      }
+      
+      if (actualMinPeriod === undefined) {
         throw new Error(`Epicycle bounds at index ${i} must specify either minPeriod or minProportion`);
       }
       
+      // Round minimum period up to the nearest integer
+      actualMinPeriod = Math.ceil(actualMinPeriod);
+      
+      // Calculate max period from proportion if available
       if (bounds.maxProportion !== undefined) {
         if (i === 0) {
           throw new Error(`Cannot use maxProportion for the first epicycle (index 0) as there is no parent`);
@@ -149,14 +161,36 @@ export default class IslandConfigSearch {
         }
         
         actualMaxPeriod = bounds.maxProportion * parentPeriod;
-      } else if (bounds.maxPeriod !== undefined) {
-        actualMaxPeriod = bounds.maxPeriod;
-      } else {
+      }
+      
+      // If direct maxPeriod is available, compare with proportion-based value and take the smaller
+      if (bounds.maxPeriod !== undefined) {
+        actualMaxPeriod = actualMaxPeriod !== undefined 
+          ? Math.min(bounds.maxPeriod, actualMaxPeriod) 
+          : bounds.maxPeriod;
+      }
+      
+      if (actualMaxPeriod === undefined) {
         throw new Error(`Epicycle bounds at index ${i} must specify either maxPeriod or maxProportion`);
       }
       
+      // Round maximum period down to the nearest integer
+      actualMaxPeriod = Math.floor(actualMaxPeriod);
+      
+      // Ensure min is not greater than max after rounding
+      if (actualMinPeriod > actualMaxPeriod) {
+        // Adjust max to at least equal min
+        actualMaxPeriod = actualMinPeriod;
+      }
+      
       // Generate a random period within the bounds
-      let period = actualMinPeriod + Math.random() * (actualMaxPeriod - actualMinPeriod);
+      let period: number;
+      if (actualMinPeriod === actualMaxPeriod) {
+        period = actualMinPeriod;
+      } else {
+        // Generate random integer between min and max (inclusive)
+        period = Math.floor(actualMinPeriod + Math.random() * (actualMaxPeriod - actualMinPeriod + 1));
+      }
       
       // Apply negative period if allowed and randomly chosen
       if (bounds.allowNegative && Math.random() < 0.5) {
@@ -212,9 +246,10 @@ export default class IslandConfigSearch {
           const currentSign = Math.sign(cycle.period);
           
           // Get actual min/max periods, handling proportional bounds
-          let actualMinPeriod: number;
-          let actualMaxPeriod: number;
+          let actualMinPeriod: number | undefined;
+          let actualMaxPeriod: number | undefined;
           
+          // Calculate min period from proportion if available
           if (bounds.minProportion !== undefined) {
             if (j === 0) {
               throw new Error(`Cannot use minProportion for the first epicycle (index 0) as there is no parent`);
@@ -228,12 +263,23 @@ export default class IslandConfigSearch {
             }
             
             actualMinPeriod = bounds.minProportion * parentPeriod;
-          } else if (bounds.minPeriod !== undefined) {
-            actualMinPeriod = bounds.minPeriod;
-          } else {
+          }
+          
+          // If direct minPeriod is available, compare with proportion-based value and take the larger
+          if (bounds.minPeriod !== undefined) {
+            actualMinPeriod = actualMinPeriod !== undefined 
+              ? Math.max(bounds.minPeriod, actualMinPeriod) 
+              : bounds.minPeriod;
+          }
+          
+          if (actualMinPeriod === undefined) {
             throw new Error(`Epicycle bounds at index ${j} must specify either minPeriod or minProportion`);
           }
           
+          // Round minimum period up to the nearest integer
+          actualMinPeriod = Math.ceil(actualMinPeriod);
+          
+          // Calculate max period from proportion if available
           if (bounds.maxProportion !== undefined) {
             if (j === 0) {
               throw new Error(`Cannot use maxProportion for the first epicycle (index 0) as there is no parent`);
@@ -247,18 +293,35 @@ export default class IslandConfigSearch {
             }
             
             actualMaxPeriod = bounds.maxProportion * parentPeriod;
-          } else if (bounds.maxPeriod !== undefined) {
-            actualMaxPeriod = bounds.maxPeriod;
-          } else {
+          }
+          
+          // If direct maxPeriod is available, compare with proportion-based value and take the smaller
+          if (bounds.maxPeriod !== undefined) {
+            actualMaxPeriod = actualMaxPeriod !== undefined 
+              ? Math.min(bounds.maxPeriod, actualMaxPeriod) 
+              : bounds.maxPeriod;
+          }
+          
+          if (actualMaxPeriod === undefined) {
             throw new Error(`Epicycle bounds at index ${j} must specify either maxPeriod or maxProportion`);
           }
           
-          // Calculate perturbation amount (larger at higher temperatures)
-          const maxPerturbation = (actualMaxPeriod - actualMinPeriod) * 0.2 * (temperature / this.annealingParams.initialTemperature);
-          const perturbation = (Math.random() * 2 - 1) * maxPerturbation;
+          // Round maximum period down to the nearest integer
+          actualMaxPeriod = Math.floor(actualMaxPeriod);
           
-          // Calculate new period
-          let newPeriod = Math.abs(cycle.period) + perturbation;
+          // Ensure min is not greater than max after rounding
+          if (actualMinPeriod > actualMaxPeriod) {
+            // Adjust max to at least equal min
+            actualMaxPeriod = actualMinPeriod;
+          }
+          
+          // For integer period perturbation, use discrete steps based on temperature
+          // Higher temperature allows larger random integer adjustments
+          const maxIntegerPerturbation = Math.max(1, Math.floor((actualMaxPeriod - actualMinPeriod) * 0.2 * (temperature / this.annealingParams.initialTemperature)));
+          const integerPerturbation = Math.floor(Math.random() * (2 * maxIntegerPerturbation + 1)) - maxIntegerPerturbation;
+          
+          // Calculate new period as an integer
+          let newPeriod = Math.abs(cycle.period) + integerPerturbation;
           
           // Keep within bounds
           newPeriod = Math.max(actualMinPeriod, Math.min(actualMaxPeriod, newPeriod));
@@ -290,13 +353,19 @@ export default class IslandConfigSearch {
     // Converting to milliseconds: 3,650,000 * 1000 = 3,650,000,000
     const randomStartTimeMs = Math.floor(Math.random() * 3650000000);
     
+    // Convert conjunction targets to target pairs format
+    const targetPairs = this.conjunctionTargets.map(target => ({
+      island1Id: target.island1Id,
+      island2Id: target.island2Id
+    }));
+    
     // Run the analysis with random start time while keeping other params
     const analysisParams = {
       ...this.analysisParams,
       startTimeMs: randomStartTimeMs
     };
     
-    const stats = analyzer.analyzeConjunctions(analysisParams);
+    const stats = analyzer.analyzeConjunctions(analysisParams, targetPairs);
     
     // Calculate error for each conjunction target
     let totalScore = 0;
@@ -631,7 +700,14 @@ export default class IslandConfigSearch {
     const analysisParams = {
       ...this.analysisParams
     };
-    const stats = analyzer.analyzeConjunctions(analysisParams);
+    
+    // Convert conjunction targets to target pairs format
+    const targetPairs = this.conjunctionTargets.map(target => ({
+      island1Id: target.island1Id,
+      island2Id: target.island2Id
+    }));
+    
+    const stats = analyzer.analyzeConjunctions(analysisParams, targetPairs);
     
     // Calculate error for each conjunction target
     let totalScore = 0;

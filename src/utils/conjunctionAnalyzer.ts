@@ -31,6 +31,14 @@ export interface AnalysisParams {
 }
 
 /**
+ * Island pair to analyze
+ */
+export interface IslandPair {
+  island1Id: number;
+  island2Id: number;
+}
+
+/**
  * A class that analyzes island conjunctions over an extended period
  */
 export default class ConjunctionAnalyzer {
@@ -49,12 +57,16 @@ export default class ConjunctionAnalyzer {
   /**
    * Run the conjunction analysis for a specified period
    * @param params Analysis parameters
+   * @param targetPairs Optional array of specific island pairs to analyze
    * @returns Object mapping pairs of island IDs to their conjunction statistics
    */
-  public analyzeConjunctions(params: AnalysisParams = { 
-    simulationDays: 3650, // 10 years by default
-    timeStepDays: 365     // Process in 1-year chunks
-  }): Map<string, ConjunctionStats> {
+  public analyzeConjunctions(
+    params: AnalysisParams = { 
+      simulationDays: 3650, // 10 years by default
+      timeStepDays: 365     // Process in 1-year chunks
+    },
+    targetPairs?: IslandPair[]
+  ): Map<string, ConjunctionStats> {
     // Set the initial simulation time (default to 0 if not specified)
     const startTimeMs = params.startTimeMs || 0;
     this.simulator.setTime(startTimeMs);
@@ -62,32 +74,63 @@ export default class ConjunctionAnalyzer {
     // Initialize stats for each island pair
     const stats = new Map<string, ConjunctionStats>();
     
-    // Initialize pairs
-    for (let i = 0; i < this.islands.length; i++) {
-      const island1 = this.islands[i];
-      for (let j = i + 1; j < this.islands.length; j++) {
-        const island2 = this.islands[j];
+    // If targetPairs is provided, only initialize those specific pairs
+    if (targetPairs && targetPairs.length > 0) {
+      for (const pair of targetPairs) {
+        const island1 = this.islands.find(island => island.id === pair.island1Id);
+        const island2 = this.islands.find(island => island.id === pair.island2Id);
         
-        // Create a unique key for each pair
-        const pairKey = this.getPairKey(island1.id, island2.id);
-        
-        stats.set(pairKey, {
-          island1Id: island1.id,
-          island2Id: island2.id,
-          island1Name: island1.name,
-          island2Name: island2.name,
-          totalConjunctions: 0,
-          avgConjunctionDuration: 0,
-          minConjunctionDuration: Infinity,
-          maxConjunctionDuration: 0,
-          avgTimeBetweenConjunctions: 0,
-          minTimeBetweenConjunctions: null,
-          maxTimeBetweenConjunctions: null,
-          avgMinDistance: 0,
-          minMinDistance: Infinity,
-          conjunctionTimes: [],
-          allConjunctions: []
-        });
+        if (island1 && island2) {
+          // Create a unique key for each pair
+          const pairKey = this.getPairKey(island1.id, island2.id);
+          
+          stats.set(pairKey, {
+            island1Id: island1.id,
+            island2Id: island2.id,
+            island1Name: island1.name,
+            island2Name: island2.name,
+            totalConjunctions: 0,
+            avgConjunctionDuration: 0,
+            minConjunctionDuration: Infinity,
+            maxConjunctionDuration: 0,
+            avgTimeBetweenConjunctions: 0,
+            minTimeBetweenConjunctions: null,
+            maxTimeBetweenConjunctions: null,
+            avgMinDistance: 0,
+            minMinDistance: Infinity,
+            conjunctionTimes: [],
+            allConjunctions: []
+          });
+        }
+      }
+    } else {
+      // If no targetPairs, initialize all possible pairs (original behavior)
+      for (let i = 0; i < this.islands.length; i++) {
+        const island1 = this.islands[i];
+        for (let j = i + 1; j < this.islands.length; j++) {
+          const island2 = this.islands[j];
+          
+          // Create a unique key for each pair
+          const pairKey = this.getPairKey(island1.id, island2.id);
+          
+          stats.set(pairKey, {
+            island1Id: island1.id,
+            island2Id: island2.id,
+            island1Name: island1.name,
+            island2Name: island2.name,
+            totalConjunctions: 0,
+            avgConjunctionDuration: 0,
+            minConjunctionDuration: Infinity,
+            maxConjunctionDuration: 0,
+            avgTimeBetweenConjunctions: 0,
+            minTimeBetweenConjunctions: null,
+            maxTimeBetweenConjunctions: null,
+            avgMinDistance: 0,
+            minMinDistance: Infinity,
+            conjunctionTimes: [],
+            allConjunctions: []
+          });
+        }
       }
     }
     
@@ -105,7 +148,8 @@ export default class ConjunctionAnalyzer {
       // Calculate conjunctions for the next chunk
       const conjunctions = this.simulator.calculateUpcomingConjunctions(
         params.timeStepDays,
-        time
+        time,
+        targetPairs
       );
       
       // Add to the accumulating list

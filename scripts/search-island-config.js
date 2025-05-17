@@ -36,49 +36,103 @@ async function runWorker() {
     parentPort.on('message', (message) => {
       if (message.type === 'exit') {
         shouldExit = true;
+      } else if (message.type === 'optimize-island') {
+        // Handle request to optimize a specific island
+        optimizeIsland(message.data);
       }
     });
-    
-    // Create search instance for incremental search
-    const search = new IslandConfigSearch({
-      ...workerData.searchParams,
-      // Ensure we're using the worker-specific random seed
-      annealingParams: {
-        ...workerData.searchParams.annealingParams,
-        randomSeed: workerData.searchParams.annealingParams?.randomSeed
-      }
-    });
-    
-    const result = await search.searchIncremental(
-      // Progress callback
-      (phase, totalPhases, currentIsland, result, iteration, temperature, elapsedMs) => {
-        // Send progress updates to the main thread
+
+    // Function to optimize a single island and report results back
+    async function optimizeIsland(params) {
+      try {
+        const { island, fixedIslands, phase, totalPhases, searchParams } = params;
+
+        // Create list of all islands for this optimization (base island + fixed islands + current island)
+        const currentIslands = [searchParams.baseIsland];
+        if (fixedIslands && fixedIslands.length > 0) {
+          currentIslands.push(...fixedIslands);
+        }
+        
+        // Get set of all island IDs in the current configuration
+        const islandIds = new Set([
+          searchParams.baseIsland.id, 
+          ...fixedIslands.map(i => i.id),
+          island.id
+        ]);
+        
+        // Filter conjunction targets to only include those relevant to the current set of islands
+        const relevantTargets = searchParams.conjunctionTargets.filter(target => 
+          islandIds.has(target.island1Id) && islandIds.has(target.island2Id));
+          
+        console.log(`Worker ${workerData.workerId}: Optimizing island "${island.name}" with ${relevantTargets.length} relevant conjunction targets`);
+
+        // Create search instance for this phase
+        const search = new IslandConfigSearch({
+          baseIsland: searchParams.baseIsland,
+          epicycleBounds: searchParams.epicycleBounds,
+          islandsToConfigure: [island], // Only one island to configure
+          conjunctionTargets: relevantTargets, // Only use relevant targets
+          analysisParams: searchParams.analysisParams,
+          annealingParams: searchParams.annealingParams
+        });
+
+        // Add previously configured islands as fixed islands
+        if (fixedIslands && fixedIslands.length > 0) {
+          search.setFixedIslands(fixedIslands);
+        }
+        
+        // Run the optimization
+        const result = await search.optimizeIsland(
+          // Progress callback
+          (result, iteration, temperature, elapsedMs) => {
+            // Send progress updates to the main thread
+            parentPort.postMessage({
+              type: 'optimization-progress',
+              data: {
+                workerId: workerData.workerId,
+                phase,
+                totalPhases,
+                currentIsland: island.name,
+                result,
+                iteration,
+                temperature,
+                elapsedMs,
+                initialTemperature: searchParams.annealingParams?.initialTemperature,
+                minTemperature: searchParams.annealingParams?.minTemperature
+              }
+            });
+          },
+          // Check if we should exit
+          () => shouldExit
+        );
+        
+        // Send the result to the main thread
         parentPort.postMessage({
-          type: 'incremental-progress',
+          type: 'optimization-result',
           data: {
             workerId: workerData.workerId,
             phase,
-            totalPhases,
-            currentIsland,
-            result,
-            iteration,
-            temperature,
-            elapsedMs,
-            initialTemperature: workerData.searchParams.annealingParams?.initialTemperature,
-            minTemperature: workerData.searchParams.annealingParams?.minTemperature
+            result
           }
         });
-      },
-      // Check if we should exit
-      () => shouldExit
-    );
+      } catch (error) {
+        // Send any errors to the main thread
+        parentPort.postMessage({
+          type: 'error',
+          data: {
+            workerId: workerData.workerId,
+            error: error.message,
+            stack: error.stack
+          }
+        });
+      }
+    }
     
-    // Send the final result to the main thread
+    // Signal that the worker is ready
     parentPort.postMessage({
-      type: 'result',
+      type: 'worker-ready',
       data: {
-        workerId: workerData.workerId,
-        result
+        workerId: workerData.workerId
       }
     });
   } catch (error) {
@@ -97,7 +151,7 @@ async function runWorker() {
 // Main thread function
 async function runMain() {
   // Function to print incremental search progress
-  function printIncrementalSearchSummary(phase, totalPhases, currentIsland, result, elapsedMs, lastUpdateTime, temperature, initialTemperature, minTemperature) {
+  function printPhaseSearchSummary(phase, totalPhases, currentIsland, result, elapsedMs, lastUpdateTime, temperature, initialTemperature, minTemperature) {
     // Clear console if supported
     if (process.stdout.isTTY) {
       process.stdout.write('\x1Bc');
@@ -211,7 +265,7 @@ async function runMain() {
     .option('workers', {
       alias: 'w',
       type: 'number',
-      description: 'Number of worker processes (only relevant for parallel search)',
+      description: 'Number of worker processes',
       default: 1
     })
     .option('update-interval', {
@@ -241,17 +295,21 @@ async function runMain() {
       console.log(`Running with ${numWorkers} worker threads in parallel`);
       
       // Setup variables for tracking
+      let allConfiguredIslands = [config.baseIsland];
       let bestResult = null;
       let shouldExit = false;
-      let workersRunning = 0;
-      let workersCompleted = 0;
-      let currentPhases = new Map(); // Map of workerId -> phase
-      let totalPhases = config.islandsToConfigure.length;
-      let currentIslands = new Map(); // Map of workerId -> islandName
-      let workerResults = new Map(); // Map of workerId -> result
+      let currentPhase = 0;
+      const totalPhases = config.islandsToConfigure.length;
       
-      // Track progress
+      // Track per-worker progress
+      let workersReady = 0;
+      let workersRunning = 0;
+      let phaseResults = new Map(); // Map of workerId -> result for current phase
+      let workerProgress = new Map(); // Map of workerId -> {temperature, iteration, etc}
+      
+      // Track overall progress
       let startTime = Date.now();
+      let phaseStartTime = startTime;
       let lastUpdateTime = startTime;
       let updateNeeded = false;
       
@@ -280,12 +338,12 @@ async function runMain() {
         if (bestResult) {
           try {
             console.log(`\nSaving current configuration to ${outputPath}...`);
-            await fs.writeFile(outputPath, JSON.stringify(bestResult.islands, null, 2), 'utf-8');
+            await fs.writeFile(outputPath, JSON.stringify(allConfiguredIslands, null, 2), 'utf-8');
             console.log('Configuration saved!');
             
             // Print the island configurations in a more readable format
             console.log('\nIsland Configurations:');
-            for (const island of bestResult.islands) {
+            for (const island of allConfiguredIslands) {
               console.log(`- ${island.name}:`);
               if (island.cycles) {
                 for (const cycle of island.cycles) {
@@ -311,108 +369,111 @@ async function runMain() {
       
       // Function to update the display showing progress from all workers
       function updateDisplay() {
-        if (updateNeeded && workerResults.size > 0) {
+        if (updateNeeded && workerProgress.size > 0) {
           const now = Date.now();
           
-          // Find the best result among all workers
+          // Find the best result so far
           let currentBestResult = null;
           let currentBestScore = Infinity;
-          let highestPhase = 0;
           
-          for (const [workerId, result] of workerResults.entries()) {
-            const workerPhase = currentPhases.get(workerId) || 0;
-            
-            // First prioritize the highest phase
-            if (workerPhase > highestPhase) {
-              highestPhase = workerPhase;
-              currentBestResult = result;
+          for (const [workerId, result] of phaseResults.entries()) {
+            if (result && result.score < currentBestScore) {
               currentBestScore = result.score;
-            } 
-            // If in the same highest phase, compare scores
-            else if (workerPhase === highestPhase && result && result.score < currentBestScore) {
               currentBestResult = result;
-              currentBestScore = result.score;
             }
           }
           
           if (currentBestResult) {
-            bestResult = currentBestResult;
-            
             // Clear console if supported
             if (process.stdout.isTTY) {
               process.stdout.write('\x1Bc');
             }
             
             console.log('\n=== ISLAND CONFIGURATION SEARCH ===\n');
-            console.log(`Running ${workersRunning} workers in parallel (${workersCompleted} completed)`);
-            console.log(`Elapsed time: ${((now - startTime) / 1000).toFixed(1)} seconds`);
-            console.log(`Current best score: ${bestResult.score.toFixed(4)}`);
+            console.log(`Phase ${currentPhase + 1}/${totalPhases}: Optimizing island "${config.islandsToConfigure[currentPhase].name}"`);
+            console.log(`Total elapsed time: ${((now - startTime) / 1000).toFixed(1)} seconds`);
+            console.log(`Phase elapsed time: ${((now - phaseStartTime) / 1000).toFixed(1)} seconds`);
+            console.log(`Current best score: ${currentBestScore.toFixed(4)}`);
             
             // Show worker status
             console.log('\nWORKER STATUS:');
-            const workerTable = '+--------+----------------+----------+----------+';
+            const workerTable = '+--------+-----------+----------+------------+';
             console.log(workerTable);
-            console.log('| Worker | Current Island | Progress | Score    |');
+            console.log('| Worker | Progress  | Temp     | Score      |');
             console.log(workerTable);
             
             for (let i = 0; i < numWorkers; i++) {
-              const phase = currentPhases.get(i) || 0;
-              const island = currentIslands.get(i) || 'Not started';
-              const result = workerResults.get(i);
+              const progress = workerProgress.get(i) || {};
+              const result = phaseResults.get(i);
               
               // Calculate progress percentage
               let progressPct = 0;
-              if (result && result.temperature !== undefined && 
-                  result.annealingParams?.initialTemperature !== undefined && 
-                  result.annealingParams?.minTemperature !== undefined) {
-                const logInitial = Math.log(result.annealingParams.initialTemperature);
-                const logMin = Math.log(result.annealingParams.minTemperature);
-                const logCurrent = Math.log(result.temperature);
+              if (progress.temperature !== undefined && 
+                  progress.initialTemperature !== undefined && 
+                  progress.minTemperature !== undefined) {
+                const logInitial = Math.log(progress.initialTemperature);
+                const logMin = Math.log(progress.minTemperature);
+                const logCurrent = Math.log(progress.temperature);
                 progressPct = ((logInitial - logCurrent) / (logInitial - logMin)) * 100;
                 progressPct = Math.min(100, Math.max(0, progressPct));
               }
               
-              const score = result ? result.score.toFixed(4) : '-';
+              const tempStr = progress.temperature ? progress.temperature.toFixed(1).padStart(8) : '    -    ';
+              const score = result ? result.score.toFixed(4).padStart(10) : '    -    ';
               
-              console.log(`| ${String(i).padEnd(6)} | ${island.padEnd(14).substring(0, 14)} | ${progressPct.toFixed(1).padStart(7)}% | ${String(score).padStart(8)} |`);
+              console.log(`| ${String(i).padEnd(6)} | ${progressPct.toFixed(1).padStart(7)}% | ${tempStr} | ${score} |`);
             }
             
             console.log(workerTable);
             
-            // Render table of target results for the best configuration
-            const tableBorder = '+----------------+----------------+----------+---------+---------+---------+-----------+';
-            console.log('\nCONJUNCTION RESULTS (BEST CONFIGURATION):');
-            console.log(tableBorder);
-            console.log('| Island 1       | Island 2       | Avg Dist | Max Dur | Avg Gap | Max Gap | Error (%) |');
-            console.log(tableBorder);
-            
-            // Print each pair as a row in the table
-            const pairs = Array.from(bestResult.stats.values());
-            // Filter to only include pairs that are in the conjunctionTargets
-            pairs.filter(pairStats => {
-              const pairKey = getPairKey(pairStats.island1Id, pairStats.island2Id);
-              return bestResult.errorDetails.errors.has(pairKey);
-            }).forEach(pairStats => {
-              const island1 = pairStats.island1Name.padEnd(14).substring(0, 14);
-              const island2 = pairStats.island2Name.padEnd(14).substring(0, 14);
+            // Show best result details if available
+            if (currentBestResult && currentBestResult.stats) {
+              // Render table of target results
+              const tableBorder = '+----------------+----------------+----------+----------+---------+---------+-----------+';
+              console.log('\nCONJUNCTION RESULTS (BEST SO FAR):');
+              console.log(tableBorder);
+              console.log('| Island 1       | Island 2       | Avg Dist | Max Dur | Avg Gap | Max Gap | Error (%) |');
+              console.log(tableBorder);
               
-              let avgDist = formatDistanceCompact(pairStats.avgMinDistance).padStart(8);
-              let maxDur = formatDurationCompact(pairStats.maxConjunctionDuration).padStart(7);
-              let avgGap = formatDurationCompact(pairStats.avgTimeBetweenConjunctions).padStart(7);
-              let maxGap = pairStats.maxTimeBetweenConjunctions !== null ? 
-                formatDurationCompact(pairStats.maxTimeBetweenConjunctions).padStart(7) : 
-                '   -    ';
-              
-              // Get error percentage for this pair
-              const pairKey = getPairKey(pairStats.island1Id, pairStats.island2Id);
-              const error = bestResult.errorDetails.errors.get(pairKey) || 0;
-              const errorStr = error.toFixed(2).padStart(8);
-              
-              console.log(`| ${island1} | ${island2} | ${avgDist} | ${maxDur} | ${avgGap} | ${maxGap} | ${errorStr}% |`);
-            });
-            
-            console.log(tableBorder);
+              // Print each pair as a row in the table
+              const pairs = Array.from(currentBestResult.stats.values());
+              // Filter to only include pairs that are in the conjunctionTargets
+              pairs.filter(pairStats => {
+                const pairKey = getPairKey(pairStats.island1Id, pairStats.island2Id);
+                return currentBestResult.errorDetails.errors.has(pairKey);
+              }).forEach(pairStats => {
+                const island1 = pairStats.island1Name.padEnd(14).substring(0, 14);
+                const island2 = pairStats.island2Name.padEnd(14).substring(0, 14);
                 
+                let avgDist = formatDistanceCompact(pairStats.avgMinDistance).padStart(8);
+                let maxDur = formatDurationCompact(pairStats.maxConjunctionDuration).padStart(7);
+                let avgGap = formatDurationCompact(pairStats.avgTimeBetweenConjunctions).padStart(7);
+                let maxGap = pairStats.maxTimeBetweenConjunctions !== null ? 
+                  formatDurationCompact(pairStats.maxTimeBetweenConjunctions).padStart(7) : 
+                  '   -    ';
+                
+                // Get error percentage for this pair
+                const pairKey = getPairKey(pairStats.island1Id, pairStats.island2Id);
+                const error = currentBestResult.errorDetails.errors.get(pairKey) || 0;
+                const errorStr = error.toFixed(2).padStart(7);
+                
+                console.log(`| ${island1} | ${island2} | ${avgDist} | ${maxDur} | ${avgGap} | ${maxGap} | ${errorStr}% |`);
+              });
+              
+              console.log(tableBorder);
+            }
+            
+            // Show islands configured so far
+            console.log('\nCONFIGURED ISLANDS:');
+            for (const island of allConfiguredIslands) {
+              console.log(`- ${island.name}:`);
+              if (island.cycles) {
+                for (const cycle of island.cycles) {
+                  console.log(`  * Period: ${cycle.period.toFixed(2)} days`);
+                }
+              }
+            }
+            
             // Show time since last update
             const timeSinceUpdate = Math.floor((Date.now() - lastUpdateTime) / 1000);
             console.log(`\nLast update: ${timeSinceUpdate} seconds ago`);
@@ -430,85 +491,163 @@ async function runMain() {
         updateDisplay();
       }, updateIntervalSecs * 1000);
       
-      // Create worker threads for parallel search
+      // Create worker threads
       const workers = [];
+      
+      // Function to start the next phase
+      async function startNextPhase() {
+        if (currentPhase >= totalPhases) {
+          // All phases complete, save final result
+          clearInterval(updateInterval);
+          
+          console.log(`\nSearch completed. Saving configuration to ${outputPath}...`);
+          await fs.writeFile(outputPath, JSON.stringify(allConfiguredIslands, null, 2), 'utf-8');
+          console.log('Configuration saved!');
+          
+          // Print the island configurations in a more readable format
+          console.log('\nFinal Island Configurations:');
+          for (const island of allConfiguredIslands) {
+            console.log(`- ${island.name}:`);
+            if (island.cycles) {
+              for (const cycle of island.cycles) {
+                console.log(`  * Period: ${cycle.period.toFixed(2)} days`);
+              }
+            }
+          }
+          
+          // Exit
+          process.exit(0);
+        }
+        
+        // Reset phase tracking
+        phaseStartTime = Date.now();
+        phaseResults.clear();
+        workerProgress.clear();
+        workersRunning = numWorkers;
+        
+        const currentIsland = config.islandsToConfigure[currentPhase];
+        console.log(`\nStarting Phase ${currentPhase + 1}/${totalPhases}: Optimizing island "${currentIsland.name}"`);
+        
+        // Create fixed islands array (skip the base island which is already included in the search)
+        const fixedIslands = allConfiguredIslands.slice(1);
+        
+        // Create set of island IDs in the current configuration
+        const islandIds = new Set([
+          config.baseIsland.id, 
+          ...fixedIslands.map(i => i.id),
+          currentIsland.id
+        ]);
+        
+        // Filter conjunction targets to only include those relevant to the current set of islands
+        const relevantTargets = config.conjunctionTargets.filter(target => 
+          islandIds.has(target.island1Id) && islandIds.has(target.island2Id));
+        
+        console.log(`Using ${relevantTargets.length} conjunction targets for this phase`);
+        
+        // Start the workers for this phase
+        for (let i = 0; i < numWorkers; i++) {
+          workers[i].postMessage({
+            type: 'optimize-island',
+            data: {
+              island: currentIsland,
+              fixedIslands: fixedIslands,
+              phase: currentPhase + 1,
+              totalPhases: totalPhases,
+              searchParams: {
+                baseIsland: config.baseIsland,
+                epicycleBounds: config.epicycleBounds,
+                conjunctionTargets: config.conjunctionTargets, // We'll let the worker filter these
+                analysisParams: config.analysisParams || {
+                  simulationDays: 3650,
+                  timeStepDays: 30
+                },
+                annealingParams: {
+                  ...config.annealingParams,
+                  // Use different random seeds for different workers
+                  randomSeed: (config.annealingParams?.randomSeed || 0) + i
+                }
+              }
+            }
+          });
+        }
+        
+        updateNeeded = true;
+        updateDisplay();
+      }
+      
+      // Function to complete the current phase
+      function completePhase() {
+        // Find the best result from all workers
+        let bestPhaseResult = null;
+        let bestPhaseScore = Infinity;
+        
+        for (const [workerId, result] of phaseResults.entries()) {
+          if (result && result.score < bestPhaseScore) {
+            bestPhaseScore = result.score;
+            bestPhaseResult = result;
+          }
+        }
+        
+        if (bestPhaseResult) {
+          // Get the configured island from the best result
+          const configuredIsland = bestPhaseResult.islands[bestPhaseResult.islands.length - 1];
+          
+          // Add to our list of configured islands
+          allConfiguredIslands.push(configuredIsland);
+          bestResult = bestPhaseResult;
+          
+          console.log(`\nCompleted Phase ${currentPhase + 1}/${totalPhases}`);
+          console.log(`Added island "${configuredIsland.name}" with score ${bestPhaseScore.toFixed(4)}`);
+          
+          // Move to next phase
+          currentPhase++;
+          startNextPhase();
+        } else {
+          console.error('No valid result found for this phase');
+          process.exit(1);
+        }
+      }
       
       // Function to handle worker message
       const handleWorkerMessage = async (message, workerId) => {
-        if (message.type === 'incremental-progress') {
-          const { phase, totalPhases: receivedTotalPhases, currentIsland: islandName, result, temperature } = message.data;
+        if (message.type === 'worker-ready') {
+          workersReady++;
+          
+          // Start the first phase when all workers are ready
+          if (workersReady === numWorkers) {
+            startNextPhase();
+          }
+        } else if (message.type === 'optimization-progress') {
+          const { phase, result, temperature, initialTemperature, minTemperature } = message.data;
           
           // Update progress tracking for this worker
-          currentPhases.set(workerId, phase);
-          currentIslands.set(workerId, islandName);
+          workerProgress.set(workerId, {
+            temperature,
+            initialTemperature,
+            minTemperature
+          });
           
-          // Store worker's current result
-          const workerResult = { ...result };
-          workerResult.temperature = temperature;
-          workerResult.annealingParams = {
-            initialTemperature: message.data.initialTemperature,
-            minTemperature: message.data.minTemperature
-          };
-          workerResults.set(workerId, workerResult);
+          // Update current result if better than previous
+          const currentResult = phaseResults.get(workerId);
+          if (!currentResult || result.score < currentResult.score) {
+            phaseResults.set(workerId, result);
+          }
           
           // Trigger display update
           updateNeeded = true;
           updateDisplay();
-          
-          // If a worker found a better result, update the best result
-          const workerPhase = currentPhases.get(workerId) || 0;
-          const currentHighestPhase = bestResult ? (bestResult.currentPhase || 0) : 0;
-          
-          // First prioritize by phase, then by score within the same phase
-          if (!bestResult || 
-              workerPhase > currentHighestPhase || 
-              (workerPhase === currentHighestPhase && result.score < bestResult.score)) {
-            // Clone result and add phase information
-            bestResult = { ...workerResult, currentPhase: workerPhase };
-          }
-        } else if (message.type === 'result') {
+        } else if (message.type === 'optimization-result') {
           const { result } = message.data;
-          workerResults.set(workerId, result);
           
-          // Check if this is the best result
-          const workerPhase = currentPhases.get(workerId) || 0;
-          const currentHighestPhase = bestResult ? (bestResult.currentPhase || 0) : 0;
+          // Store final result for this worker
+          phaseResults.set(workerId, result);
           
-          // First prioritize by phase, then by score within the same phase
-          if (!bestResult || 
-              workerPhase > currentHighestPhase || 
-              (workerPhase === currentHighestPhase && result.score < bestResult.score)) {
-            // Clone result and add phase information
-            bestResult = { ...result, currentPhase: workerPhase };
-          }
-          
-          // Mark this worker as completed
-          workersCompleted++;
+          // Mark this worker as complete
           workersRunning--;
           
-          // If all workers have completed, save the result and exit
+          // If all workers are done with this phase, move to the next
           if (workersRunning === 0) {
-            // Clean up
-            clearInterval(updateInterval);
-            
-            // Save final result
-            console.log(`\nSearch completed. Saving configuration to ${outputPath}...`);
-            await fs.writeFile(outputPath, JSON.stringify(bestResult.islands, null, 2), 'utf-8');
-            console.log('Configuration saved!');
-            
-            // Print the island configurations in a more readable format
-            console.log('\nFinal Island Configurations:');
-            for (const island of bestResult.islands) {
-              console.log(`- ${island.name}:`);
-              if (island.cycles) {
-                for (const cycle of island.cycles) {
-                  console.log(`  * Period: ${cycle.period.toFixed(2)} days`);
-                }
-              }
-            }
-            
-            // Exit
-            process.exit(0);
+            completePhase();
           }
         } else if (message.type === 'error') {
           console.error(`Worker ${workerId} error:`, message.data.error);
@@ -528,22 +667,7 @@ async function runMain() {
       for (let i = 0; i < numWorkers; i++) {
         const worker = new Worker(__filename, {
           workerData: {
-            workerId: i,
-            searchParams: {
-              baseIsland: config.baseIsland,
-              epicycleBounds: config.epicycleBounds,
-              islandsToConfigure: config.islandsToConfigure,
-              conjunctionTargets: config.conjunctionTargets,
-              analysisParams: config.analysisParams || {
-                simulationDays: 3650, // 10 years by default
-                timeStepDays: 30      // Process in 1-month chunks
-              },
-              annealingParams: {
-                ...config.annealingParams,
-                // Use different random seeds for different workers
-                randomSeed: (config.annealingParams?.randomSeed || 0) + i
-              }
-            }
+            workerId: i
           }
         });
         
@@ -565,7 +689,6 @@ async function runMain() {
         });
         
         workers.push(worker);
-        workersRunning++;
       }
       
     } catch (error) {
