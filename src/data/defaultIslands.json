@@ -2,71 +2,196 @@
   {
     "id": 1,
     "name": "Aetheria",
-    "color": "#4287f5",
-    "radius": 8,
+    "color": "#3498db",
+    "radius": 5,
+    "visible": true,
     "cycles": [
-      { "period": 365 },
-      { "period": 76 }
-    ],
-    "visible": true
+      {
+        "period": 365
+      },
+      {
+        "period": 73
+      }
+    ]
   },
   {
     "id": 2,
-    "name": "Frostpine",
-    "color": "#f54242",
+    "name": "Sylvanis",
+    "color": "#9e42f5",
     "radius": 8,
     "cycles": [
-      { "period": 543 },
-      { "period": -178 },
-      { "period": 15 }
+      {
+        "period": 328
+      },
+      {
+        "period": -30
+      },
+      {
+        "period": -30
+      }
     ],
     "visible": true
   },
   {
     "id": 3,
-    "name": "Velvetia",
-    "color": "#42f5a7",
+    "name": "Emberhold",
+    "color": "#f54242",
     "radius": 8,
     "cycles": [
-      { "period": 627 },
-      { "period": -262 },
-      { "period": 31 }
+      {
+        "period": -296
+      },
+      {
+        "period": -30
+      },
+      {
+        "period": -30
+      }
     ],
     "visible": true
   },
   {
     "id": 4,
-    "name": "Obsidian Spire",
-    "color": "#f5a742",
+    "name": "Azuremist",
+    "color": "#42a7f5",
     "radius": 8,
     "cycles": [
-      { "period": 415 },
-      { "period": -242 },
-      { "period": 12 }
+      {
+        "period": 364
+      },
+      {
+        "period": -133
+      },
+      {
+        "period": 48
+      }
     ],
     "visible": true
   },
   {
     "id": 5,
-    "name": "Sylvanis",
-    "color": "#9e42f5",
-    "radius": 8,
+    "name": "Frostpine",
+    "color": "#7ef542",
+    "radius": 6,
     "cycles": [
-      { "period": 246 },
-      { "period": 173 }
+      {
+        "period": -391
+      },
+      {
+        "period": -165
+      },
+      {
+        "period": -123
+      }
     ],
     "visible": true
   },
   {
     "id": 6,
+    "name": "Velvetia",
+    "color": "#42f5a7",
+    "radius": 6,
+    "cycles": [
+      {
+        "period": 415
+      },
+      {
+        "period": 292
+      },
+      {
+        "period": 167
+      }
+    ],
+    "visible": true
+  },
+  {
+    "id": 7,
+    "name": "Obsidian Spire",
+    "color": "#f5a742",
+    "radius": 6,
+    "cycles": [
+      {
+        "period": 453
+      },
+      {
+        "period": 269
+      },
+      {
+        "period": 170
+      }
+    ],
+    "visible": true
+  },
+  {
+    "id": 8,
     "name": "Cloudreach",
     "color": "#f542e5",
-    "radius": 8,
+    "radius": 6,
     "cycles": [
-      { "period": 194 },
-      { "period": 61 },
-      { "period": 23 }
+      {
+        "period": 551
+      },
+      {
+        "period": 180
+      },
+      {
+        "period": 39
+      }
+    ],
+    "visible": true
+  },
+  {
+    "id": 9,
+    "name": "Thornvale",
+    "color": "#8a42f5",
+    "radius": 6,
+    "cycles": [
+      {
+        "period": 545
+      },
+      {
+        "period": -111
+      },
+      {
+        "period": -36
+      }
+    ],
+    "visible": true
+  },
+  {
+    "id": 10,
+    "name": "Sandrift",
+    "color": "#f5d642",
+    "radius": 6,
+    "cycles": [
+      {
+        "period": 311
+      },
+      {
+        "period": -64
+      },
+      {
+        "period": 38
+      }
+    ],
+    "visible": true
+  },
+  {
+    "id": 11,
+    "name": "Mistral Isle",
+    "color": "#42f5e8",
+    "radius": 6,
+    "cycles": [
+      {
+        "period": 100
+      },
+      {
+        "period": -37
+      },
+      {
+        "period": -30
+      }
     ],
     "visible": true
   }
-] 
+]
