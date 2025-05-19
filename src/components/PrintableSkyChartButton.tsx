@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography, Paper } from '@mui/material';
+import { Box, Button, CircularProgress, Snackbar, Alert } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
 import SkydriftArchipelagoSimulator, { Island, Journey } from '../utils/sim';
 import { formatTime } from '../utils/timeFormat';
@@ -26,7 +26,10 @@ const PrintableSkyChartButton: React.FC<PrintableSkyChartButtonProps> = ({
   activeJourneys,
   viewportScale,
 }) => {
-  const [open, setOpen] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const hiddenContainerRef = useRef<HTMLDivElement | null>(null);
   const simulationContainerRef = useRef<HTMLDivElement | null>(null);
   
   // A4 size in pixels at 96 DPI (standard screen resolution)
@@ -102,31 +105,36 @@ const PrintableSkyChartButton: React.FC<PrintableSkyChartButtonProps> = ({
     calculateOptimalScale();
   }, [islands, time, activeJourneys, calculateOptimalScale]);
 
-  const handleOpen = () => {
-    setOpen(true);
-  };
-
-  const handleClose = () => {
-    setOpen(false);
-  };
-
-  const handlePrint = () => {
-    if (!simulationContainerRef.current) return;
-    
-    // Create a new canvas for the printable chart
-    const printCanvas = document.createElement('canvas');
-    printCanvas.width = chartWidth;
-    printCanvas.height = chartHeight;
-    const ctx = printCanvas.getContext('2d');
-    if (!ctx) return;
-    
-    // Clear with white background
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, chartWidth, chartHeight);
-    
-    // Find the SimulationCanvas in the container and get its canvas element
-    const canvasElement = simulationContainerRef.current.querySelector('canvas');
-    if (canvasElement) {
+  const handlePrint = async () => {
+    try {
+      setIsPrinting(true);
+      
+      // Create a canvas to render the printable chart
+      const printCanvas = document.createElement('canvas');
+      printCanvas.width = chartWidth;
+      printCanvas.height = chartHeight;
+      const ctx = printCanvas.getContext('2d');
+      if (!ctx) {
+        throw new Error("Could not get canvas context");
+      }
+      
+      // Clear with white background
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, chartWidth, chartHeight);
+      
+      // Wait a moment for the hidden canvas to render
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Find the SimulationCanvas in the container and get its canvas element
+      if (!simulationContainerRef.current) {
+        throw new Error("Simulation container not found");
+      }
+      
+      const canvasElement = simulationContainerRef.current.querySelector('canvas');
+      if (!canvasElement) {
+        throw new Error("Canvas element not found");
+      }
+      
       // Position the simulation canvas centered in the printable area
       const contentMarginTop = 100;
       const contentMarginSide = 50;
@@ -163,11 +171,106 @@ const PrintableSkyChartButton: React.FC<PrintableSkyChartButtonProps> = ({
         width: contentWidth,
         height: contentHeight
       });
+      
+      // Create an image from the canvas
+      const imgData = printCanvas.toDataURL('image/png');
+      
+      // Open a new window with just the image
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        throw new Error("Could not open print window. Please allow pop-ups for this site.");
+      }
+      
+      // Add content to the window
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Skydrift Archipelago Chart - ${formatTime(time)}</title>
+            <style>
+              body {
+                margin: 0;
+                padding: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                background-color: #f8f8f8;
+              }
+              
+              .chart-container {
+                max-width: 100%;
+                max-height: 100vh;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                background: white;
+              }
+              
+              img {
+                display: block;
+                max-width: 100%;
+                height: auto;
+              }
+              
+              .print-button {
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                padding: 8px 16px;
+                background: #2196f3;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-family: Arial, sans-serif;
+              }
+              
+              @media print {
+                body {
+                  background: none;
+                }
+                
+                .chart-container {
+                  box-shadow: none;
+                  max-height: none;
+                }
+                
+                .print-button {
+                  display: none;
+                }
+                
+                @page {
+                  size: A4 portrait;
+                  margin: 0;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="chart-container">
+              <img src="${imgData}" alt="Skydrift Archipelago Chart" />
+            </div>
+            <button class="print-button" onclick="window.print(); return false;">Print Chart</button>
+            <script>
+              // Auto print after a moment
+              setTimeout(() => {
+                window.print();
+              }, 500);
+            </script>
+          </body>
+        </html>
+      `);
+      
+      printWindow.document.close();
+      
+      // Reset state
+      setTimeout(() => {
+        setIsPrinting(false);
+      }, 1000);
+    } catch (error) {
+      console.error("Error printing chart:", error);
+      setIsPrinting(false);
+      setFeedbackMessage(`Error printing chart: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setShowFeedback(true);
     }
-    
-    // Convert to image and open print window
-    const dataUrl = printCanvas.toDataURL('image/png');
-    openPrintWindow(dataUrl);
   };
   
   // Adds decorations specific to the printable version
@@ -289,74 +392,6 @@ const PrintableSkyChartButton: React.FC<PrintableSkyChartButtonProps> = ({
     ctx.textAlign = "left";
   };
   
-  // Function to open print window with chart image
-  const openPrintWindow = (dataUrl: string) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert('Please allow pop-ups to print the chart');
-      return;
-    }
-
-    // Create HTML content for the print window
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Skydrift Archipelago Chart - ${formatTime(time)}</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              margin: 0;
-              padding: 0;
-            }
-            .chart-container {
-              page-break-inside: avoid;
-              width: 100%;
-              max-width: 210mm;
-              margin: 0 auto;
-            }
-            .chart-image {
-              width: 100%;
-              height: auto;
-            }
-            @media print {
-              .no-print {
-                display: none;
-              }
-              @page {
-                size: A4 portrait;
-                margin: 10mm;
-              }
-              body {
-                width: 210mm;
-                height: 297mm;
-              }
-            }
-            .print-button {
-              padding: 10px 20px;
-              background: #2196f3;
-              color: white;
-              border: none;
-              border-radius: 4px;
-              cursor: pointer;
-              font-size: 16px;
-              margin: 20px;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="no-print">
-            <button class="print-button" onclick="window.print(); return false;">Print Chart</button>
-          </div>
-          <div class="chart-container">
-            <img src="${dataUrl}" class="chart-image" alt="Skydrift Archipelago Chart" />
-          </div>
-        </body>
-      </html>
-    `);
-    
-    printWindow.document.close();
-  };
-  
   // Custom handler for toggling island visibility (required by SimulationCanvas)
   const handleToggleIslandVisibility = (islandId: number) => {
     // No-op for the printable view
@@ -371,69 +406,57 @@ const PrintableSkyChartButton: React.FC<PrintableSkyChartButtonProps> = ({
     <>
       <Button
         variant="outlined"
-        startIcon={<PrintIcon />}
-        onClick={handleOpen}
+        startIcon={isPrinting ? <CircularProgress size={20} /> : <PrintIcon />}
+        onClick={handlePrint}
+        disabled={isPrinting}
         sx={{ ml: 1 }}
       >
-        Print Chart
+        {isPrinting ? "Printing..." : "Print Chart"}
       </Button>
       
-      <Dialog 
-        open={open} 
-        onClose={handleClose} 
-        maxWidth="md" 
-        fullWidth
-        PaperProps={{
-          sx: { maxHeight: '90vh' }
+      {/* Hidden container for rendering the printable chart */}
+      <Box
+        ref={hiddenContainerRef}
+        sx={{
+          position: 'fixed',
+          opacity: 0,
+          pointerEvents: 'none',
+          width: 0,
+          height: 0,
+          overflow: 'hidden'
         }}
       >
-        <DialogTitle>Printable Skydrift Archipelago Chart</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" paragraph>
-            This chart shows the current state of the Skydrift Archipelago at {formatTime(time)}.
-            It has been optimized for monochrome printing on A4 paper.
-          </Typography>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
-            <Paper 
-              elevation={3} 
-              sx={{ 
-                p: 2, 
-                bgcolor: '#f5f5f5', 
-                maxHeight: '70vh',
-                overflow: 'auto'
-              }}
-            >
-              {/* Container for the simulation canvas */}
-              <div ref={simulationContainerRef} style={{ width: '100%', height: '600px', backgroundColor: '#ffffff' }}>
-                <SimulationCanvas
-                  simulator={printSimulatorRef.current}
-                  islands={islands}
-                  time={time}
-                  showOrbits={false} // No orbits in print version
-                  showTrails={showTrails}
-                  trailLength={trailLength}
-                  activeJourney={activeJourney}
-                  viewportScale={dynamicScale}
-                  onResize={handleCanvasResize}
-                  toggleIslandVisibility={handleToggleIslandVisibility}
-                  customProps={{
-                    printMode: true,
-                    showLegend: false,
-                    backgroundColor: '#ffffff'
-                  }}
-                />
-              </div>
-            </Paper>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>Close</Button>
-          <Button onClick={handlePrint} variant="contained" startIcon={<PrintIcon />}>
-            Print Chart
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <div ref={simulationContainerRef} style={{ width: chartWidth, height: chartHeight, backgroundColor: '#ffffff' }}>
+          <SimulationCanvas
+            simulator={printSimulatorRef.current}
+            islands={islands}
+            time={time}
+            showOrbits={false} // No orbits in print version
+            showTrails={showTrails}
+            trailLength={trailLength}
+            activeJourney={activeJourney}
+            viewportScale={dynamicScale}
+            onResize={handleCanvasResize}
+            toggleIslandVisibility={handleToggleIslandVisibility}
+            customProps={{
+              printMode: true,
+              showLegend: false,
+              backgroundColor: '#ffffff'
+            }}
+          />
+        </div>
+      </Box>
+      
+      {/* Feedback snackbar */}
+      <Snackbar
+        open={showFeedback}
+        autoHideDuration={6000}
+        onClose={() => setShowFeedback(false)}
+      >
+        <Alert onClose={() => setShowFeedback(false)} severity="error" sx={{ width: '100%' }}>
+          {feedbackMessage}
+        </Alert>
+      </Snackbar>
     </>
   );
 };

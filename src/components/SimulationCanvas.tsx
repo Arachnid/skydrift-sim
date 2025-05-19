@@ -544,13 +544,11 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
           const markerIndex = Math.min(Math.floor(t * (journey.path.length - 1)), journey.path.length - 1);
           const marker = journey.path[markerIndex];
           
-          ctx.beginPath();
-          ctx.arc(
-            marker.x * viewportScale + centerXRef.current, 
-            marker.y * viewportScale + centerYRef.current, 
-            4, 0, 2 * Math.PI
-          );
-          ctx.fill();
+          // Draw a square marker instead of a circle
+          const markerSize = 8;
+          const markerX = marker.x * viewportScale + centerXRef.current - markerSize/2;
+          const markerY = marker.y * viewportScale + centerYRef.current - markerSize/2;
+          ctx.fillRect(markerX, markerY, markerSize, markerSize);
         }
       }
       
