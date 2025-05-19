@@ -7,23 +7,9 @@ import {
   Typography,
   useTheme
 } from '@mui/material';
-import { styled } from '@mui/material/styles';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import PauseIcon from '@mui/icons-material/Pause';
-import RestartAltIcon from '@mui/icons-material/RestartAlt';
-import FastForwardIcon from '@mui/icons-material/FastForward';
-import FastRewindIcon from '@mui/icons-material/FastRewind';
-import AddIcon from '@mui/icons-material/Add';
-import RemoveIcon from '@mui/icons-material/Remove';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import DirectionsBoatIcon from '@mui/icons-material/DirectionsBoat';
 import TerrainIcon from '@mui/icons-material/Terrain';
-import UpdateIcon from '@mui/icons-material/Update';
 import FilterCenterFocusIcon from '@mui/icons-material/FilterCenterFocus';
-import PrintIcon from '@mui/icons-material/Print';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SkydriftArchipelagoSimulator, { Island, Epicycle, Position, Journey, Conjunction } from '../utils/sim';
 import TimeControlPanel from './TimeControlPanel';
