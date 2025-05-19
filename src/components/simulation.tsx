@@ -582,6 +582,20 @@ const SkydriftArchipelagoSimulation = () => {
     simulatorRef.current.setTime(0);
     setIsPlaying(false);
     lastTimeRef.current = 0;
+    
+    // Clear all active journeys
+    const existingJourneys = [...simulatorRef.current.getActiveJourneys()];
+    existingJourneys.forEach(journey => {
+      if (journey && journey.id) {
+        simulatorRef.current.deleteJourney(journey.id);
+      }
+    });
+    setActiveJourneys([]);
+    
+    // Clear any active journey calculation
+    setActiveJourney(null);
+    setSourceIslandId(null);
+    setDestinationIslandId(null);
   };
   
   // Jump forward or backward in time
