@@ -220,7 +220,7 @@ const SkydriftArchipelagoSimulation = () => {
         
         // Keep track if we've applied any parameters
         let appliedParameters = false;
-        
+                
         // Parse day parameter
         const dayParam = searchParams.get('day');
         if (dayParam !== null) {
@@ -239,39 +239,21 @@ const SkydriftArchipelagoSimulation = () => {
             appliedParameters = true;
           }
         }
-        
+
         // Parse islands parameter
         const islandsParam = searchParams.get('islands');
         if (islandsParam) {
           const visibleIslandIds = islandsParam.split('-').map(id => parseInt(id, 10));
           const updatedIslands = [...islands];
-          let hasChanges = false;
           
           // First, set all islands to invisible
           updatedIslands.forEach(island => {
-            if (island.visible) {
-              island.visible = false;
-              hasChanges = true;
-            }
+            island.visible = visibleIslandIds.includes(island.id);
           });
           
-          // Then make specified islands visible
-          visibleIslandIds.forEach(id => {
-            if (!isNaN(id)) {
-              const islandIndex = updatedIslands.findIndex(island => island.id === id);
-              if (islandIndex >= 0 && !updatedIslands[islandIndex].visible) {
-                updatedIslands[islandIndex].visible = true;
-                hasChanges = true;
-              }
-            }
-          });
-          
-          // Only update islands if there were changes
-          if (hasChanges) {
-            simulatorRef.current.setIslands(updatedIslands);
-            setIslands([...simulatorRef.current.getIslands()]);
-            appliedParameters = true;
-          }
+          simulatorRef.current.setIslands(updatedIslands);
+          setIslands([...simulatorRef.current.getIslands()]);
+          appliedParameters = true;
         }
         
         // Parse journeys parameter
@@ -332,6 +314,7 @@ const SkydriftArchipelagoSimulation = () => {
         if (appliedParameters) {
           // Use replaceState to update the URL without triggering a page reload
           window.history.replaceState({}, '', window.location.pathname);
+          updateViewportScale();
         }
       } catch (error) {
         console.error('Error parsing shared URL:', error);
@@ -352,7 +335,7 @@ const SkydriftArchipelagoSimulation = () => {
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [islands, isPlaying, journeySpeed]);
+  }, []);
   
   // Update time and positions in animation loop
   useEffect(() => {
@@ -703,9 +686,12 @@ const SkydriftArchipelagoSimulation = () => {
     const simulator = simulatorRef.current;
     simulator.setIslands(islands);
     
+    // Ensure center coordinates are always set when initializing
+    simulator.setCenter(CENTER_X, CENTER_Y);
+    
     // Set viewport scaling
     updateViewportScale();
-  }, [islands, updateViewportScale]);
+  }, [islands, updateViewportScale, CENTER_X, CENTER_Y]);
 
   // Update journey when playing
   useEffect(() => {

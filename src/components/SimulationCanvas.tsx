@@ -59,9 +59,9 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   
-  // CENTER_X and CENTER_Y are initially 0 and will be set in the resize observer
-  const centerXRef = useRef<number>(0);
-  const centerYRef = useRef<number>(0);
+  // Initialize center references with reasonable default values instead of 0
+  const centerXRef = useRef<number>(400); // Default to 400
+  const centerYRef = useRef<number>(400); // Default to 400
 
   // Add a ref to store the legend item positions
   const legendItemPositionsRef = useRef<{ x: number, y: number, width: number, height: number, islandId: number }[]>([]);
@@ -69,6 +69,18 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
   // Set up resize observer for canvas
   useEffect(() => {
     if (canvasContainerRef.current) {
+      // Immediately set center values based on container size
+      if (canvasContainerRef.current.clientWidth && canvasContainerRef.current.clientHeight) {
+        centerXRef.current = Math.floor(canvasContainerRef.current.clientWidth / 2);
+        centerYRef.current = Math.floor(canvasContainerRef.current.clientHeight / 2);
+        
+        // Call onResize with initial size
+        onResize(
+          Math.floor(canvasContainerRef.current.clientWidth),
+          Math.floor(canvasContainerRef.current.clientHeight)
+        );
+      }
+    
       const resizeObserver = new ResizeObserver(entries => {
         for (const entry of entries) {
           if (entry.contentRect) {
@@ -98,6 +110,12 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
     };
   }, [onResize]);
 
+  // Ensure simulator center coordinates are set right after mount
+  useEffect(() => {
+    // Set simulator center coordinates with initial values
+    simulator.setCenter(centerXRef.current, centerYRef.current);
+  }, [simulator]);
+
   // Draw everything on the canvas
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -109,9 +127,6 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
     // Update canvas dimensions to match container
     canvas.width = canvasContainerRef.current?.clientWidth || 800;
     canvas.height = canvasContainerRef.current?.clientHeight || 800;
-    
-    // Set simulator center coordinates
-    simulator.setCenter(centerXRef.current, centerYRef.current);
     
     // Set simulator time
     simulator.setTime(time);
@@ -486,33 +501,6 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
         8, 0, 2 * Math.PI
       );
       ctx.fill();
-      
-      // Draw journey progress label
-      const progress = simulator.getJourneyProgress(journey);
-      ctx.font = "bold 12px Roboto, Arial, sans-serif";
-      ctx.fillStyle = "#2e7d32"; // MUI green
-      
-      const labelText = `${destIsland.name}: ${progress.progress.toFixed(0)}%`;
-      const labelX = currentPosition.x * viewportScale + centerXRef.current + 10;
-      const labelY = currentPosition.y * viewportScale + centerYRef.current - 10;
-      
-      // Draw label background
-      const textWidth = ctx.measureText(labelText).width;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-      const padding = 4;
-      const capsuleRadius = 8;
-      
-      ctx.beginPath();
-      ctx.moveTo(labelX - padding + capsuleRadius, labelY - 12);
-      ctx.lineTo(labelX + textWidth + padding - capsuleRadius, labelY - 12);
-      ctx.arc(labelX + textWidth + padding - capsuleRadius, labelY - 12 + capsuleRadius, capsuleRadius, -Math.PI/2, Math.PI/2);
-      ctx.lineTo(labelX - padding + capsuleRadius, labelY + 4);
-      ctx.arc(labelX - padding + capsuleRadius, labelY - 12 + capsuleRadius, capsuleRadius, Math.PI/2, -Math.PI/2);
-      ctx.fill();
-      
-      // Draw label text
-      ctx.fillStyle = "#2e7d32"; // MUI green
-      ctx.fillText(labelText, labelX, labelY);
     }
   };
   
