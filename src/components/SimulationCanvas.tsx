@@ -441,6 +441,30 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
         
         ctx.stroke();
         ctx.setLineDash([]);
+        
+        // Draw time markers along the future path
+        ctx.fillStyle = "#2e7d32"; // MUI green
+        ctx.font = "bold 11px Roboto, Arial, sans-serif";
+        
+        // Calculate remaining journey days
+        const remainingDays = Math.ceil((journey.arrivalTime - time) / 1000);
+        
+        if (remainingDays > 0) {
+          // Show one marker for each day of the journey, based on the journeyTickMarkDays setting
+          for (let day = journeyTickMarkDays; day <= remainingDays; day += journeyTickMarkDays) {
+            // Calculate what percentage of the remaining journey this day represents
+            const t = day / remainingDays;
+            // Find the corresponding index in the futurePath array
+            const markerIndex = Math.min(Math.floor(t * (futurePath.length - 1)), futurePath.length - 1);
+            const marker = futurePath[markerIndex];
+            
+            // Draw a square marker
+            const markerSize = 8;
+            const markerX = marker.x * viewportScale + centerXRef.current - markerSize/2;
+            const markerY = marker.y * viewportScale + centerYRef.current - markerSize/2;
+            ctx.fillRect(markerX, markerY, markerSize, markerSize);
+          }
+        }
       }
       
       // Draw current position marker

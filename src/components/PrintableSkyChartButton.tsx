@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { Box, Button, CircularProgress, Snackbar, Alert } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
 import SkydriftArchipelagoSimulator, { Island, Journey } from '../utils/sim';
@@ -45,11 +45,6 @@ const PrintableSkyChartButton: React.FC<PrintableSkyChartButtonProps> = ({
   // Calculate a dynamic scale factor to ensure islands use 90% of available space
   const [dynamicScale, setDynamicScale] = useState(viewportScale);
   
-  // Create a temporary copy of our simulator for rendering purposes
-  const printSimulatorRef = useRef<SkydriftArchipelagoSimulator>(
-    new SkydriftArchipelagoSimulator()
-  );
-  
   // Function to calculate optimal scale for the print view
   const calculateOptimalScale = useCallback(() => {
     const visibleIslands = islands.filter(i => i.visible);
@@ -93,25 +88,13 @@ const PrintableSkyChartButton: React.FC<PrintableSkyChartButtonProps> = ({
       setDynamicScale(newScale);
     }
   }, [islands, simulator, time, showTrails, trailLength]);
-  
-  // Initialize the print simulator with current state
-  useEffect(() => {
-    // Copy islands and journeys from the main simulator
-    printSimulatorRef.current.setIslands(islands);
-    printSimulatorRef.current.setTime(time);
-    
-    // Add active journeys
-    activeJourneys.forEach(journey => {
-      printSimulatorRef.current.addJourney(journey);
-    });
-    
-    // Calculate scaled viewport based on visible islands
-    calculateOptimalScale();
-  }, [islands, time, activeJourneys, calculateOptimalScale]);
 
   const handlePrint = async () => {
     try {
       setIsPrinting(true);
+      
+      // Calculate optimal scale for print view
+      calculateOptimalScale();
       
       // Create a canvas to render the printable chart
       const printCanvas = document.createElement('canvas');
@@ -432,7 +415,7 @@ const PrintableSkyChartButton: React.FC<PrintableSkyChartButtonProps> = ({
       >
         <div ref={simulationContainerRef} style={{ width: chartWidth, height: chartHeight, backgroundColor: '#ffffff' }}>
           <SimulationCanvas
-            simulator={printSimulatorRef.current}
+            simulator={simulator}
             islands={islands}
             time={time}
             showOrbits={false}
@@ -446,7 +429,7 @@ const PrintableSkyChartButton: React.FC<PrintableSkyChartButtonProps> = ({
             toggleIslandVisibility={handleToggleIslandVisibility}
             customProps={{
               printMode: true,
-              showLegend: true,
+              showLegend: false,
               backgroundColor: '#ffffff'
             }}
           />

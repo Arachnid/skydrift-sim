@@ -404,7 +404,21 @@ const SkydriftArchipelagoSimulation = () => {
   // Also update simulator time when time is set directly
   useEffect(() => {
     simulatorRef.current.setTime(time);
-  }, [time]);
+    
+    // If not playing, also update journey statuses to match the new time
+    // This ensures we handle journeys consistently whether time changes from animation or direct actions
+    if (!isPlaying) {
+      const updatedJourneys = simulatorRef.current.updateJourneyStatuses();
+      
+      // Filter out completed journeys
+      const activeOnes = updatedJourneys.filter(journey => journey.status === 'active');
+      
+      // Update state if there are any changes in journey statuses
+      if (updatedJourneys.length !== activeOnes.length) {
+        setActiveJourneys([...activeOnes]);
+      }
+    }
+  }, [time, isPlaying]);
   
   // Add the predicted journey to active journeys
   const addActiveJourney = useCallback(() => {

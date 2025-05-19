@@ -101,7 +101,13 @@ export default class SkydriftArchipelagoSimulator {
     if (journey.status === 'predicted') {
       journey.status = 'active';
     }
+    
+    // Set the start time to the current time
     journey.startTime = this.time;
+    
+    // Recalculate arrival time based on the current start time
+    journey.arrivalTime = this.time + (journey.duration * 1000);
+    
     this.activeJourneys.push({...journey});
   }
   
@@ -131,13 +137,35 @@ export default class SkydriftArchipelagoSimulator {
       return journey.path[journey.path.length - 1];
     }
     
-    // Calculate the percentage of journey completed based on time
+    // If it's a prediction, we need to calculate from the start point
+    if (journey.status === 'predicted') {
+      // Return the appropriate point from the path based on calculation
+      // For predictions, path[0] is at the current point in time
+      return journey.path[0];
+    }
+    
+    // For active journeys, calculate elapsed time properly
     const elapsedTime = this.time - journey.startTime;
+    
+    // If journey hasn't started yet (time travel), return first point
+    if (elapsedTime <= 0) {
+      return journey.path[0];
+    }
+    
+    // If journey is completed but status hasn't been updated, return last point
+    if (this.time >= journey.arrivalTime) {
+      return journey.path[journey.path.length - 1];
+    }
+    
+    // Calculate progress as percentage of total journey time
     const totalJourneyTime = journey.arrivalTime - journey.startTime;
-    const journeyProgress = Math.min(1, Math.max(0, elapsedTime / totalJourneyTime));
+    const journeyProgress = elapsedTime / totalJourneyTime;
     
     // Find the closest point in the path array
-    const pathIndex = Math.floor(journeyProgress * (journey.path.length - 1));
+    const pathIndex = Math.min(
+      Math.floor(journeyProgress * (journey.path.length - 1)),
+      journey.path.length - 1
+    );
     
     return journey.path[pathIndex];
   }
@@ -148,11 +176,38 @@ export default class SkydriftArchipelagoSimulator {
       return { remainingDistance: 0, remainingTime: 0, progress: 100 };
     }
     
-    const elapsedTime = this.time - journey.startTime;
-    const totalJourneyTime = journey.arrivalTime - journey.startTime;
-    const journeyProgress = Math.min(1, Math.max(0, elapsedTime / totalJourneyTime));
+    // For predicted journeys, always show 0% progress
+    if (journey.status === 'predicted') {
+      return { 
+        remainingDistance: journey.distance, 
+        remainingTime: journey.duration, 
+        progress: 0 
+      };
+    }
     
-    const remainingTime = Math.max(0, (journey.arrivalTime - this.time) / 1000); // in days
+    // Calculate elapsed time
+    const elapsedTime = this.time - journey.startTime;
+    
+    // If journey hasn't started yet (time travel)
+    if (elapsedTime <= 0) {
+      return { 
+        remainingDistance: journey.distance, 
+        remainingTime: journey.duration, 
+        progress: 0 
+      };
+    }
+    
+    // If journey has completed but status hasn't been updated
+    if (this.time >= journey.arrivalTime) {
+      return { remainingDistance: 0, remainingTime: 0, progress: 100 };
+    }
+    
+    // Calculate journey progress as percentage
+    const totalJourneyTime = journey.arrivalTime - journey.startTime;
+    const journeyProgress = elapsedTime / totalJourneyTime;
+    
+    // Calculate remaining values
+    const remainingTime = (journey.arrivalTime - this.time) / 1000; // in days
     const remainingDistance = journey.distance * (1 - journeyProgress);
     
     return {
@@ -173,13 +228,28 @@ export default class SkydriftArchipelagoSimulator {
       return journey.path;
     }
     
-    // Calculate the percentage of journey completed based on time
+    // For active journeys, calculate elapsed time
     const elapsedTime = this.time - journey.startTime;
+    
+    // If journey hasn't started yet (time travel)
+    if (elapsedTime <= 0) {
+      return journey.path;
+    }
+    
+    // If journey is completed but status hasn't been updated
+    if (this.time >= journey.arrivalTime) {
+      return [];
+    }
+    
+    // Calculate progress as percentage of total journey time
     const totalJourneyTime = journey.arrivalTime - journey.startTime;
-    const journeyProgress = Math.min(1, Math.max(0, elapsedTime / totalJourneyTime));
+    const journeyProgress = elapsedTime / totalJourneyTime;
     
     // Find the closest point in the path array
-    const startIndex = Math.floor(journeyProgress * (journey.path.length - 1));
+    const startIndex = Math.min(
+      Math.floor(journeyProgress * (journey.path.length - 1)),
+      journey.path.length - 1
+    );
     
     // Return only the future part of the path
     return journey.path.slice(startIndex);
@@ -668,10 +738,14 @@ export default class SkydriftArchipelagoSimulator {
       
       // Convert back to Cartesian for the path
       const pos = this.polarToCartesian(r, theta);
+      
+      // Calculate exact timestamp for this point along the journey path
+      const pointTime = journey.startTime + (t * duration * 1000);
+      
       path.push({
         x: pos.x,
         y: pos.y,
-        time: this.time + (t * duration * 1000)
+        time: pointTime
       });
     }
     
