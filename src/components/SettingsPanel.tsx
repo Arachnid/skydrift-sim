@@ -8,23 +8,24 @@ import {
   Slider,
   Typography,
   Paper,
-  Stack
+  Stack,
+  TextField
 } from '@mui/material';
 
 interface SettingsPanelProps {
   // Display settings
   showOrbits: boolean;
-  setShowOrbits: (showOrbits: boolean) => void;
+  setShowOrbits: (value: boolean) => void;
   showTrails: boolean;
-  setShowTrails: (showTrails: boolean) => void;
+  setShowTrails: (value: boolean) => void;
   trailLength: number;
-  setTrailLength: (length: number) => void;
+  setTrailLength: (value: number) => void;
   trailTickFrequency: number;
-  setTrailTickFrequency: (frequency: number) => void;
+  setTrailTickFrequency: (value: number) => void;
   
   // Journey settings
   journeyTickMarkDays: number;
-  setJourneyTickMarkDays: (days: number) => void;
+  setJourneyTickMarkDays: (value: number) => void;
 }
 
 const SettingsPanel: React.FC<SettingsPanelProps> = ({
@@ -53,7 +54,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               control={
                 <Checkbox
                   checked={showOrbits}
-                  onChange={() => setShowOrbits(!showOrbits)}
+                  onChange={(e) => setShowOrbits(e.target.checked)}
                 />
               }
               label="Show Orbits"
@@ -65,7 +66,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 control={
                   <Checkbox
                     checked={showTrails}
-                    onChange={() => setShowTrails(!showTrails)}
+                    onChange={(e) => setShowTrails(e.target.checked)}
                   />
                 }
                 label="Show Trails"

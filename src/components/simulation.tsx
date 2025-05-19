@@ -46,6 +46,7 @@ import IslandEditor from './IslandEditor';
 import JourneyPlanner from './JourneyPlanner';
 import ConjunctionsPanel from './ConjunctionsPanel';
 import PrintableSkyChartButton from './PrintableSkyChartButton';
+import ShareSimulationButton from './ShareSimulationButton';
 import SettingsPanel from './SettingsPanel';
 // Import default islands from the JSON file
 import defaultIslandsData from '../data/defaultIslands.json';
@@ -180,7 +181,7 @@ const SkydriftArchipelagoSimulation = () => {
   
   // Add a ref to store the latest journey calculation function
   const journeyCalculationRef = useRef<((srcId: number, destId: number) => void) | undefined>(undefined);
-  
+
   // Update epicycle value
   const updateEpicycle = (index: number, field: string, value: string): void => {
     const updatedEpicycles = [...epicycles];
@@ -205,6 +206,156 @@ const SkydriftArchipelagoSimulation = () => {
   const calculateMilesRadius = (period: number): number => {
     return simulatorRef.current.calculateMilesRadius(period);
   };
+
+  // Parse shared URL if present
+  useEffect(() => {
+    const parseShareUrl = () => {
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        
+        // Check if we have any sharing parameters
+        if (!searchParams.has('day') && !searchParams.has('islands') && !searchParams.has('journeys')) {
+          return;
+        }
+        
+        console.log("parseShareUrl");
+        
+        // Keep track if we've applied any parameters
+        let appliedParameters = false;
+        
+        // Parse day parameter
+        const dayParam = searchParams.get('day');
+        if (dayParam !== null) {
+          const day = parseInt(dayParam, 10);
+          if (!isNaN(day)) {
+            // Convert days to milliseconds (1 day = 1000ms in the simulation)
+            const newTime = day * 1000;
+            setTime(newTime);
+            simulatorRef.current.setTime(newTime);
+            
+            // If simulation was playing, pause it when loading a shared state
+            if (isPlaying) {
+              setIsPlaying(false);
+            }
+            
+            appliedParameters = true;
+          }
+        }
+        
+        // Parse islands parameter
+        const islandsParam = searchParams.get('islands');
+        if (islandsParam) {
+          const visibleIslandIds = islandsParam.split('-').map(id => parseInt(id, 10));
+          const updatedIslands = [...islands];
+          let hasChanges = false;
+          
+          // First, set all islands to invisible
+          updatedIslands.forEach(island => {
+            if (island.visible) {
+              island.visible = false;
+              hasChanges = true;
+            }
+          });
+          
+          // Then make specified islands visible
+          visibleIslandIds.forEach(id => {
+            if (!isNaN(id)) {
+              const islandIndex = updatedIslands.findIndex(island => island.id === id);
+              if (islandIndex >= 0 && !updatedIslands[islandIndex].visible) {
+                updatedIslands[islandIndex].visible = true;
+                hasChanges = true;
+              }
+            }
+          });
+          
+          // Only update islands if there were changes
+          if (hasChanges) {
+            simulatorRef.current.setIslands(updatedIslands);
+            setIslands([...simulatorRef.current.getIslands()]);
+            appliedParameters = true;
+          }
+        }
+        
+        // Parse journeys parameter
+        const journeysParam = searchParams.get('journeys');
+        if (journeysParam) {
+          // Clear existing journeys first - get and delete all existing journeys 
+          const existingJourneys = [...simulatorRef.current.getActiveJourneys()];
+          existingJourneys.forEach(journey => {
+            if (journey && journey.id) {
+              simulatorRef.current.deleteJourney(journey.id);
+            }
+          });
+          setActiveJourneys([]);
+          
+          // Add each journey from URL parameters
+          const journeySpecs = journeysParam.split('-');
+          let journeysAdded = 0;
+          
+          journeySpecs.forEach(spec => {
+            const [srcStr, dstStr, spdStr] = spec.split('_');
+            const sourceId = parseInt(srcStr, 10);
+            const destId = parseInt(dstStr, 10);
+            const speed = parseFloat(spdStr);
+            
+            if (isNaN(sourceId) || isNaN(destId) || isNaN(speed)) {
+              return;
+            }
+            
+            // Make sure islands exist
+            const sourceIsland = islands.find(island => island.id === sourceId);
+            const destIsland = islands.find(island => island.id === destId);
+            
+            if (!sourceIsland || !destIsland) {
+              return;
+            }
+            
+            const calculatedJourney = simulatorRef.current.calculateJourney(
+              sourceId,
+              destId,
+              speed,
+              false // Don't just predict, add a real journey
+            );
+            
+            if (calculatedJourney) {
+              simulatorRef.current.addJourney(calculatedJourney);
+              journeysAdded++;
+            }
+          });
+          
+          // Update active journeys state if we added any journeys
+          if (journeysAdded > 0) {
+            setActiveJourneys([...simulatorRef.current.getActiveJourneys()]);
+            appliedParameters = true;
+          }
+        }
+        
+        // Clear URL parameters if we've applied any to prevent repeated parsing
+        if (appliedParameters) {
+          // Use replaceState to update the URL without triggering a page reload
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      } catch (error) {
+        console.error('Error parsing shared URL:', error);
+      }
+    };
+
+    // Parse URL when component first mounts
+    console.log("parseShareUrl");
+    parseShareUrl();
+
+    // Listen for popstate events (back/forward browser navigation)
+    const handlePopState = () => {
+      parseShareUrl();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    // Clean up event listener
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [islands, isPlaying, journeySpeed]);
   
   // Update time and positions in animation loop
   useEffect(() => {
@@ -583,8 +734,13 @@ const SkydriftArchipelagoSimulation = () => {
           jumpTime={jumpTime}
         />
         
-        {/* Add Print Chart Button */}
         <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <ShareSimulationButton
+            simulator={simulatorRef.current}
+            islands={islands}
+            time={time}
+            activeJourneys={activeJourneys}
+          />
           <PrintableSkyChartButton
             simulator={simulatorRef.current}
             islands={islands}
