@@ -38,6 +38,7 @@ import TerrainIcon from '@mui/icons-material/Terrain';
 import UpdateIcon from '@mui/icons-material/Update';
 import FilterCenterFocusIcon from '@mui/icons-material/FilterCenterFocus';
 import PrintIcon from '@mui/icons-material/Print';
+import SettingsIcon from '@mui/icons-material/Settings';
 import SkydriftArchipelagoSimulator, { Island, Epicycle, Position, Journey, Conjunction } from '../utils/sim';
 import TimeControlPanel from './TimeControlPanel';
 import SimulationCanvas from './SimulationCanvas';
@@ -45,6 +46,7 @@ import IslandEditor from './IslandEditor';
 import JourneyPlanner from './JourneyPlanner';
 import ConjunctionsPanel from './ConjunctionsPanel';
 import PrintableSkyChartButton from './PrintableSkyChartButton';
+import SettingsPanel from './SettingsPanel';
 // Import default islands from the JSON file
 import defaultIslandsData from '../data/defaultIslands.json';
 
@@ -134,9 +136,15 @@ const SkydriftArchipelagoSimulation = () => {
   const [time, setTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(SIMULATION_SPEED);
+  
+  // Display settings
   const [showOrbits, setShowOrbits] = useState(false);
   const [showTrails, setShowTrails] = useState(true);
   const [trailLength, setTrailLength] = useState(30000); // 30 days in milliseconds
+  const [trailTickFrequency, setTrailTickFrequency] = useState(5); // Every 5 days by default
+  
+  // Journey settings
+  const [journeyTickMarkDays, setJourneyTickMarkDays] = useState(1); // Days between journey tick marks
   
   // New island form state
   const [islandName, setIslandName] = useState("");
@@ -165,16 +173,13 @@ const SkydriftArchipelagoSimulation = () => {
   const [activeJourneys, setActiveJourneys] = useState<Journey[]>([]);
   
   // Add state for tab management
-  const [activeTab, setActiveTab] = useState<'island' | 'journey' | 'conjunction'>('island');
+  const [activeTab, setActiveTab] = useState<'island' | 'journey' | 'conjunction' | 'settings'>('conjunction');
   
   // Add a throttle reference to limit journey updates
   const throttleRef = useRef<number | null>(null);
   
   // Add a ref to store the latest journey calculation function
   const journeyCalculationRef = useRef<((srcId: number, destId: number) => void) | undefined>(undefined);
-  
-  // Add a frame counter for journey updates during animation
-  const frameCounterRef = useRef<number>(0);
   
   // Update epicycle value
   const updateEpicycle = (index: number, field: string, value: string): void => {
@@ -534,13 +539,9 @@ const SkydriftArchipelagoSimulation = () => {
     // Only update journey when necessary 
     if (activeJourney && sourceIslandId !== null && destinationIslandId !== null) {
       const animateJourney = (timestamp: number) => {
-        // For performance optimization, update journey less frequently at higher speeds
-        frameCounterRef.current = (frameCounterRef.current + 1) % Math.max(1, Math.round(speed / 5));
-        
-        if (frameCounterRef.current === 0 || speed <= 5) {
-          if (journeyCalculationRef.current) {
-            journeyCalculationRef.current(sourceIslandId, destinationIslandId);
-          }
+        // Always calculate the journey on each frame for maximum accuracy
+        if (journeyCalculationRef.current) {
+          journeyCalculationRef.current(sourceIslandId, destinationIslandId);
         }
         
         // Continue animation loop
@@ -558,7 +559,7 @@ const SkydriftArchipelagoSimulation = () => {
         }
       };
     }
-  }, [isPlaying, activeJourney, sourceIslandId, destinationIslandId, speed, journeyCalculationRef]);
+  }, [isPlaying, activeJourney, sourceIslandId, destinationIslandId, journeyCalculationRef]);
   //console.log("Rendering Simulation");
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -578,10 +579,6 @@ const SkydriftArchipelagoSimulation = () => {
           setIsPlaying={setIsPlaying}
           speed={speed}
           setSpeed={setSpeed}
-          showOrbits={showOrbits}
-          setShowOrbits={setShowOrbits}
-          showTrails={showTrails}
-          setShowTrails={setShowTrails}
           resetSimulation={resetSimulation}
           jumpTime={jumpTime}
         />
@@ -594,9 +591,11 @@ const SkydriftArchipelagoSimulation = () => {
             time={time}
             showTrails={showTrails}
             trailLength={trailLength}
+            trailTickFrequency={trailTickFrequency}
             activeJourney={activeJourney}
             activeJourneys={activeJourneys}
             viewportScale={viewportScale}
+            journeyTickMarkDays={journeyTickMarkDays}
           />
         </Box>
 
@@ -608,8 +607,10 @@ const SkydriftArchipelagoSimulation = () => {
           showOrbits={showOrbits}
           showTrails={showTrails}
           trailLength={trailLength}
+          trailTickFrequency={trailTickFrequency}
           activeJourney={activeJourney}
           viewportScale={viewportScale}
+          journeyTickMarkDays={journeyTickMarkDays}
           onResize={(width, height) => {
             if(width !== canvasSize.width || height !== canvasSize.height) {
               setCanvasSize({ width, height });
@@ -629,10 +630,10 @@ const SkydriftArchipelagoSimulation = () => {
             textColor="primary"
           >
             <Tab 
-              icon={<TerrainIcon />} 
+              icon={<FilterCenterFocusIcon />} 
               iconPosition="start" 
-              label="Add/Edit Island" 
-              value="island" 
+              label="Conjunctions" 
+              value="conjunction" 
             />
             <Tab 
               icon={<DirectionsBoatIcon />} 
@@ -641,36 +642,28 @@ const SkydriftArchipelagoSimulation = () => {
               value="journey" 
             />
             <Tab 
-              icon={<FilterCenterFocusIcon />} 
+              icon={<SettingsIcon />} 
               iconPosition="start" 
-              label="Conjunctions" 
-              value="conjunction" 
+              label="Settings" 
+              value="settings" 
+            />
+            <Tab 
+              icon={<TerrainIcon />} 
+              iconPosition="start" 
+              label="Add/Edit Island" 
+              value="island" 
             />
           </Tabs>
         </Box>
 
         {/* Conditional Rendering Based on Active Tab */}
-        {activeTab === 'island' && (
-          <IslandEditor
+        {activeTab === 'conjunction' && (
+          <ConjunctionsPanel
+            simulator={simulatorRef.current}
             islands={islands}
-            islandName={islandName}
-            setIslandName={setIslandName}
-            islandColor={islandColor}
-            setIslandColor={setIslandColor}
-            epicycles={epicycles}
-            setEpicycles={setEpicycles}
-            addIsland={addIsland}
-            editMode={editMode}
-            resetIslandForm={resetIslandForm}
-            toggleIslandVisibility={toggleIslandVisibility}
-            editIsland={editIsland}
-            deleteIsland={deleteIsland}
-            calculateMilesRadius={calculateMilesRadius}
-            setIslands={(newIslands) => {
-              simulatorRef.current.setIslands(newIslands);
-              setIslands([...simulatorRef.current.getIslands()]);
-              updateViewportScale();
-            }}
+            currentTime={time}
+            setTime={setTime}
+            setIsPlaying={setIsPlaying}
           />
         )}
 
@@ -695,14 +688,43 @@ const SkydriftArchipelagoSimulation = () => {
             time={time}
           />
         )}
+        
+        {activeTab === 'settings' && (
+          <SettingsPanel
+            showOrbits={showOrbits}
+            setShowOrbits={setShowOrbits}
+            showTrails={showTrails}
+            setShowTrails={setShowTrails}
+            trailLength={trailLength}
+            setTrailLength={setTrailLength}
+            trailTickFrequency={trailTickFrequency}
+            setTrailTickFrequency={setTrailTickFrequency}
+            journeyTickMarkDays={journeyTickMarkDays}
+            setJourneyTickMarkDays={setJourneyTickMarkDays}
+          />
+        )}
 
-        {activeTab === 'conjunction' && (
-          <ConjunctionsPanel
-            simulator={simulatorRef.current}
+        {activeTab === 'island' && (
+          <IslandEditor
             islands={islands}
-            currentTime={time}
-            setTime={setTime}
-            setIsPlaying={setIsPlaying}
+            islandName={islandName}
+            setIslandName={setIslandName}
+            islandColor={islandColor}
+            setIslandColor={setIslandColor}
+            epicycles={epicycles}
+            setEpicycles={setEpicycles}
+            addIsland={addIsland}
+            editMode={editMode}
+            resetIslandForm={resetIslandForm}
+            toggleIslandVisibility={toggleIslandVisibility}
+            editIsland={editIsland}
+            deleteIsland={deleteIsland}
+            calculateMilesRadius={calculateMilesRadius}
+            setIslands={(newIslands) => {
+              simulatorRef.current.setIslands(newIslands);
+              setIslands([...simulatorRef.current.getIslands()]);
+              updateViewportScale();
+            }}
           />
         )}
       </Paper>

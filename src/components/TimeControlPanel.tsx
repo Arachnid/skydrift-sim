@@ -2,14 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
-  Checkbox,
-  FormControlLabel,
-  Slider,
   Stack,
   TextField,
   Typography,
   Paper,
-  Alert
+  Alert,
+  Slider
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
@@ -25,10 +23,6 @@ interface TimeControlPanelProps {
   setIsPlaying: (isPlaying: boolean) => void;
   speed: number;
   setSpeed: (speed: number) => void;
-  showOrbits: boolean;
-  setShowOrbits: (showOrbits: boolean) => void;
-  showTrails: boolean;
-  setShowTrails: (showTrails: boolean) => void;
   resetSimulation: () => void;
   jumpTime: (amount: number) => void;
 }
@@ -40,10 +34,6 @@ const TimeControlPanel: React.FC<TimeControlPanelProps> = ({
   setIsPlaying,
   speed,
   setSpeed,
-  showOrbits,
-  setShowOrbits,
-  showTrails,
-  setShowTrails,
   resetSimulation,
   jumpTime
 }) => {
@@ -147,42 +137,20 @@ const TimeControlPanel: React.FC<TimeControlPanelProps> = ({
           </Button>
         </Stack>
         
-        <Stack direction="row" spacing={2} flexWrap="wrap" alignItems="center">
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={showOrbits}
-                onChange={() => setShowOrbits(!showOrbits)}
-              />
-            }
-            label="Show Orbits"
+        <Box sx={{ width: 320, display: 'flex', alignItems: 'center' }}>
+          <Typography variant="body2" sx={{ mr: 1 }}>Speed:</Typography>
+          <Slider
+            min={0.1}
+            max={10}
+            step={0.1}
+            value={speed}
+            onChange={(_, value) => setSpeed(value as number)}
+            sx={{ mx: 1 }}
           />
-          
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={showTrails}
-                onChange={() => setShowTrails(!showTrails)}
-              />
-            }
-            label="Show Trails"
-          />
-          
-          <Box sx={{ width: 320, display: 'flex', alignItems: 'center' }}>
-            <Typography variant="body2" sx={{ mr: 1 }}>Speed:</Typography>
-            <Slider
-              min={0.1}
-              max={10}
-              step={0.1}
-              value={speed}
-              onChange={(_, value) => setSpeed(value as number)}
-              sx={{ mx: 1 }}
-            />
-            <Typography variant="body2" sx={{ ml: 1, minWidth: 100 }}>
-              {speed.toFixed(1)} days/sec
-            </Typography>
-          </Box>
-        </Stack>
+          <Typography variant="body2" sx={{ ml: 1, minWidth: 100 }}>
+            {speed.toFixed(1)} days/sec
+          </Typography>
+        </Box>
       </Stack>
       
       {/* Time Controls */}

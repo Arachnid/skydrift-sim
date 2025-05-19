@@ -11,6 +11,8 @@ interface PrintableSkyChartButtonProps {
   time: number;
   showTrails: boolean;
   trailLength: number;
+  trailTickFrequency?: number;
+  journeyTickMarkDays?: number;
   activeJourney: Journey | null;
   activeJourneys: Journey[];
   viewportScale: number;
@@ -22,6 +24,8 @@ const PrintableSkyChartButton: React.FC<PrintableSkyChartButtonProps> = ({
   time,
   showTrails,
   trailLength,
+  trailTickFrequency = 5,
+  journeyTickMarkDays = 1,
   activeJourney,
   activeJourneys,
   viewportScale,
@@ -431,16 +435,18 @@ const PrintableSkyChartButton: React.FC<PrintableSkyChartButtonProps> = ({
             simulator={printSimulatorRef.current}
             islands={islands}
             time={time}
-            showOrbits={false} // No orbits in print version
+            showOrbits={false}
             showTrails={showTrails}
             trailLength={trailLength}
+            trailTickFrequency={trailTickFrequency}
+            journeyTickMarkDays={journeyTickMarkDays}
             activeJourney={activeJourney}
             viewportScale={dynamicScale}
             onResize={handleCanvasResize}
             toggleIslandVisibility={handleToggleIslandVisibility}
             customProps={{
               printMode: true,
-              showLegend: false,
+              showLegend: true,
               backgroundColor: '#ffffff'
             }}
           />

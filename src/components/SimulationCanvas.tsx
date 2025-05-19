@@ -26,6 +26,8 @@ interface SimulationCanvasProps {
   showOrbits: boolean;
   showTrails: boolean;
   trailLength: number;
+  trailTickFrequency?: number;
+  journeyTickMarkDays?: number; // Days between journey tick marks
   activeJourney: Journey | null;
   viewportScale: number;
   onResize: (width: number, height: number) => void;
@@ -44,6 +46,8 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
   showOrbits,
   showTrails,
   trailLength,
+  trailTickFrequency = 5,
+  journeyTickMarkDays = 1, // Default to 1 day between tick marks
   activeJourney,
   viewportScale,
   onResize,
@@ -359,8 +363,8 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
         time: futureTime 
       });
       
-      // Add tick mark points every 5 days
-      if (i % (5 * pointsPerDay) === 0 && i > 0) {
+      // Add tick mark points using trailTickFrequency
+      if (i % (trailTickFrequency * pointsPerDay) === 0 && i > 0) {
         tickPoints.push({ 
           x: pos.x * viewportScale + centerXRef.current, 
           y: pos.y * viewportScale + centerYRef.current, 
@@ -533,11 +537,11 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       ctx.fillStyle = "#795548"; // MUI brown
       ctx.font = "bold 11px Roboto, Arial, sans-serif";
       
-      // Show one marker for each day of the journey
+      // Show one marker for each day of the journey, based on the journeyTickMarkDays setting
       const journeyDays = Math.ceil(journey.duration);
       
       if (journeyDays > 0) {
-        for (let day = 1; day <= journeyDays; day++) {
+        for (let day = journeyTickMarkDays; day <= journeyDays; day += journeyTickMarkDays) {
           // Calculate what percentage of the journey this day represents
           const t = day / journey.duration;
           // Find the corresponding index in the path array
