@@ -122,6 +122,9 @@ const ConjunctionsPanel: React.FC<ConjunctionsPanelProps> = ({
       // Detect backward time jumps
       const isBackwardJump = timeIncrement < 0;
       
+      // Detect forward jumps beyond our calculation window
+      const isJumpBeyondCalculationWindow = currentTime > lastCalculationRef.current.endTime;
+      
       // First, remove past conjunctions regardless of calculation type
       const filteredConjunctions = conjunctions.filter(conj => conj.endTime >= currentTime - 86400);
       const hasRemovedConjunctions = filteredConjunctions.length < conjunctions.length;
@@ -130,10 +133,12 @@ const ConjunctionsPanel: React.FC<ConjunctionsPanelProps> = ({
       // 1. First calculation (lastCalculationRef.current.startTime === -1)
       // 2. Visible islands have changed
       // 3. Backward time jump
+      // 4. Jump ahead beyond our current calculation window
       const needsFullRecalculation = 
         lastCalculationRef.current.startTime === -1 ||
         haveVisibleIslandsChanged ||
-        isBackwardJump;
+        isBackwardJump ||
+        isJumpBeyondCalculationWindow;
       
       if (needsFullRecalculation) {
         // Use timer to allow UI to update before calculation starts
