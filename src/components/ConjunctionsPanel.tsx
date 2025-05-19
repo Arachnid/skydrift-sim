@@ -228,41 +228,7 @@ const ConjunctionsPanel: React.FC<ConjunctionsPanelProps> = ({
       }
     };
   }, [simulator, islands, currentTime]);
-  
-  // Initial calculation on component mount or island change
-  useEffect(() => {
-    // Use timer to allow UI to update
-    calculationTimerRef.current = window.setTimeout(() => {
-      // Calculate maximum look ahead period (10 years in days)
-      const maxLookAheadDays = MAX_YEARS * 365;
-      
-      // Calculate all potential conjunctions within the look ahead period
-      const allConjunctions = simulator.calculateUpcomingConjunctions(maxLookAheadDays);
-      
-      // Store all conjunctions without limiting
-      setConjunctions(allConjunctions);
-      
-      // Get current visible islands string
-      const currentVisibleIslands = islands.filter(island => island.visible).map(island => island.id).sort().join(',');
-      
-      // Update reference
-      lastCalculationRef.current = {
-        startTime: currentTime,
-        endTime: currentTime + (maxLookAheadDays * 1000),
-        islandCount: islands.length,
-        visibleIslands: currentVisibleIslands
-      };
-      
-      calculationTimerRef.current = null;
-    }, 10);
     
-    return () => {
-      if (calculationTimerRef.current !== null) {
-        clearTimeout(calculationTimerRef.current);
-      }
-    };
-  }, [simulator, islands.length, currentTime]);
-  
   // Filter conjunctions to show active and upcoming ones between visible islands
   const filteredConjunctions = conjunctions
     .filter(conj => 
