@@ -88,7 +88,7 @@ const PrintableSkyChartButton: React.FC<PrintableSkyChartButtonProps> = ({
       const newScale = availableSpace / (maxDistance * 2);
       setDynamicScale(newScale);
     }
-  }, [islands, simulator, time, showTrails, trailLength, chartWidth, chartHeight]);
+  }, [islands, simulator, time, showTrails, trailLength]);
   
   // Initialize the print simulator with current state
   useEffect(() => {

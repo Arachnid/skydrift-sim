@@ -213,7 +213,7 @@ const ConjunctionsPanel: React.FC<ConjunctionsPanelProps> = ({
         clearTimeout(calculationTimerRef.current);
       }
     };
-  }, [simulator, islands, currentTime, conjunctions]);
+  }, [simulator, islands, currentTime]);
   
   // Initial calculation on component mount or island change
   useEffect(() => {

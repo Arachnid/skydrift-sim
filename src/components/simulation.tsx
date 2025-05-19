@@ -489,7 +489,7 @@ const SkydriftArchipelagoSimulation = () => {
     simulatorRef.current.setCenter(CENTER_X, CENTER_Y);
   }, [time, CENTER_X, CENTER_Y]);
 
-  // Update journey when time changes explicitly (not during animation)
+  // Update useEffect to handle journey when time changes explicitly (not during animation)
   useEffect(() => {
     // Skip during animation - animation loop handles journey updates
     if (isPlaying) return;
@@ -559,7 +559,7 @@ const SkydriftArchipelagoSimulation = () => {
       };
     }
   }, [isPlaying, activeJourney, sourceIslandId, destinationIslandId, speed, journeyCalculationRef]);
-
+  //console.log("Rendering Simulation");
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Paper sx={{ p: 3, mb: 2, backgroundColor: 'grey.50' }} elevation={2}>
@@ -611,9 +611,11 @@ const SkydriftArchipelagoSimulation = () => {
           activeJourney={activeJourney}
           viewportScale={viewportScale}
           onResize={(width, height) => {
-            setCanvasSize({ width, height });
-            setCenterX(width / 2);
-            setCenterY(height / 2);
+            if(width !== canvasSize.width || height !== canvasSize.height) {
+              setCanvasSize({ width, height });
+              setCenterX(width / 2);
+              setCenterY(height / 2);
+            }
           }}
           toggleIslandVisibility={toggleIslandVisibility}
         />
