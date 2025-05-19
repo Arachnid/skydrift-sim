@@ -99,24 +99,6 @@ const IslandForm: React.FC<IslandFormProps> = ({
           />
         </Box>
         
-        <Box>
-          <Typography variant="caption" display="block">Color (Optional)</Typography>
-          <Box 
-            component="input"
-            type="color"
-            value={islandColor}
-            onChange={(e) => setIslandColor(e.target.value)}
-            sx={{ 
-              width: 36, 
-              height: 36, 
-              border: 'none',
-              cursor: 'pointer',
-              borderRadius: 1,
-              padding: 0
-            }}
-          />
-        </Box>
-        
         <Stack direction="row" spacing={1} alignSelf="flex-end">
           <Button
             variant="contained"
