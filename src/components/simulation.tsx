@@ -1,25 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
-  Button,
-  Checkbox,
-  Container,
-  Divider,
-  FormControl,
-  FormControlLabel,
-  Grid,
-  InputLabel,
-  MenuItem,
   Paper,
-  Select,
-  Slider,
-  Stack,
   Tab,
   Tabs,
-  TextField,
   Typography,
-  useTheme,
-  Chip
+  useTheme
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';

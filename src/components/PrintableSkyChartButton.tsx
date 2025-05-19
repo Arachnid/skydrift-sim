@@ -27,7 +27,6 @@ const PrintableSkyChartButton: React.FC<PrintableSkyChartButtonProps> = ({
   trailTickFrequency = 5,
   journeyTickMarkDays = 1,
   activeJourney,
-  activeJourneys,
   viewportScale,
 }) => {
   const [isPrinting, setIsPrinting] = useState(false);
@@ -83,9 +82,10 @@ const PrintableSkyChartButton: React.FC<PrintableSkyChartButtonProps> = ({
     const availableSpace = Math.min(contentWidth, contentHeight) * 0.8;
     
     if (maxDistance > 0) {
-      // Scale to make the furthest point take up 80% of available space
-      const newScale = availableSpace / (maxDistance * 2);
-      setDynamicScale(newScale);
+      // Note: The simulator already returns positions in miles
+      // So we're calculating pixels per mile directly
+      const pixelsPerMile = availableSpace / (maxDistance * 2);
+      setDynamicScale(pixelsPerMile);
     }
   }, [islands, simulator, time, showTrails, trailLength]);
 
@@ -301,79 +301,6 @@ const PrintableSkyChartButton: React.FC<PrintableSkyChartButtonProps> = ({
     // West at left center
     ctx.textAlign = "right";
     ctx.fillText("W", margin - 10, topMargin + contentHeight / 2);
-    
-    // Reset text alignment
-    ctx.textAlign = "left";
-    
-    // Draw scale at the bottom
-    drawScale(ctx, contentArea);
-  };
-  
-  // Helper function to draw scale at the bottom
-  const drawScale = (ctx: CanvasRenderingContext2D, contentArea: {x: number, y: number, width: number, height: number}): void => {
-    const scaleWidth = Math.min(300, contentArea.width * 0.4);
-    const scaleHeight = 30;
-    
-    // Position scale in the bottom-left corner of the content area
-    const scaleX = contentArea.x + 20;
-    const scaleY = contentArea.y + contentArea.height - scaleHeight;
-    
-    // Calculate what actual distance the scale represents based on current scale factor
-    const pixelsPerMile = dynamicScale;
-    
-    // Find a nice round number for the scale
-    let roundedMiles = 100;
-    const possibleRoundNumbers = [10, 25, 50, 100, 200, 250, 500, 1000];
-    
-    // Find the largest round number that will fit at least 2-3 ticks on the scale
-    for (let i = 0; i < possibleRoundNumbers.length; i++) {
-      const miles = possibleRoundNumbers[i];
-      const pixelWidth = miles * pixelsPerMile;
-      
-      // We want at least 3 ticks to fit within our scale width
-      if (pixelWidth * 3 <= scaleWidth) {
-        roundedMiles = miles;
-      } else {
-        break;
-      }
-    }
-    
-    // How many ticks can we fit?
-    const maxTicks = Math.floor(scaleWidth / (roundedMiles * pixelsPerMile));
-    const tickMiles = [];
-    
-    // Create tick array
-    for (let i = 0; i <= maxTicks; i++) {
-      tickMiles.push(i * roundedMiles);
-    }
-    
-    // Draw background for scale
-    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-    ctx.fillRect(scaleX - 5, scaleY - 15, scaleWidth + 10, scaleHeight + 15);
-    
-    // Draw scale line
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(scaleX, scaleY);
-    ctx.lineTo(scaleX + scaleWidth, scaleY);
-    ctx.stroke();
-    
-    // Draw scale ticks
-    tickMiles.forEach(miles => {
-      // Calculate pixel position for this tick
-      const tickX = scaleX + (miles * pixelsPerMile);
-      
-      ctx.beginPath();
-      ctx.moveTo(tickX, scaleY);
-      ctx.lineTo(tickX, scaleY - 10);
-      ctx.stroke();
-      
-      ctx.font = "12px Arial";
-      ctx.fillStyle = "#000000";
-      ctx.textAlign = "center";
-      ctx.fillText(`${miles} miles`, tickX, scaleY + 15);
-    });
     
     // Reset text alignment
     ctx.textAlign = "left";
