@@ -83,14 +83,12 @@ const ConjunctionsPanel: React.FC<ConjunctionsPanelProps> = ({
     startTime: number;
     endTime: number;
     islandCount: number;
+    visibleIslands?: string;
   }>({
     startTime: -1,
     endTime: -1,
     islandCount: 0
   });
-  
-  // Reference to track if we're in a continuous playback
-  const isPlayingRef = useRef<boolean>(false);
   
   // Track previous time to detect time jumps (manual day entry, skip forward/back)
   const prevTimeRef = useRef<number>(currentTime);
@@ -107,13 +105,13 @@ const ConjunctionsPanel: React.FC<ConjunctionsPanelProps> = ({
     }
     
     const calculateConjunctions = () => {
-      // Track if we're in continuous playback (small, regular time increments)
+      // Calculate time increment - how much time has passed since last update
       const timeIncrement = currentTime - prevTimeRef.current;
-      const isPlaying = timeIncrement > 0 && timeIncrement < 100; // Threshold for detecting continuous play
-      isPlayingRef.current = isPlaying;
       
-      // Check if islands have changed
-      const currentIslandCount = islands.length;
+      // Check if visible islands have changed
+      const currentVisibleIslands = islands.filter(island => island.visible).map(island => island.id).sort().join(',');
+      const prevVisibleIslands = lastCalculationRef.current.visibleIslands || '';
+      const haveVisibleIslandsChanged = currentVisibleIslands !== prevVisibleIslands;
       
       // Calculate maximum look ahead period (10 years in days)
       const maxLookAheadDays = MAX_YEARS * 365;
@@ -121,17 +119,21 @@ const ConjunctionsPanel: React.FC<ConjunctionsPanelProps> = ({
       // Calculate the end time for the current look ahead window
       const currentEndTime = currentTime + (maxLookAheadDays * 1000);
       
-      // Detect time jumps (manual entry, skip forward/back)
-      const isTimeJump = Math.abs(timeIncrement) > 100 || timeIncrement < 0;
+      // Detect backward time jumps
+      const isBackwardJump = timeIncrement < 0;
+      
+      // First, remove past conjunctions regardless of calculation type
+      const filteredConjunctions = conjunctions.filter(conj => conj.endTime >= currentTime - 86400);
+      const hasRemovedConjunctions = filteredConjunctions.length < conjunctions.length;
       
       // Recalculate everything from scratch in these cases:
       // 1. First calculation (lastCalculationRef.current.startTime === -1)
-      // 2. Islands have changed (added/removed)
-      // 3. Manual time jump (not continuous playback)
+      // 2. Visible islands have changed
+      // 3. Backward time jump
       const needsFullRecalculation = 
         lastCalculationRef.current.startTime === -1 ||
-        currentIslandCount !== lastCalculationRef.current.islandCount ||
-        isTimeJump;
+        haveVisibleIslandsChanged ||
+        isBackwardJump;
       
       if (needsFullRecalculation) {
         // Use timer to allow UI to update before calculation starts
@@ -146,52 +148,72 @@ const ConjunctionsPanel: React.FC<ConjunctionsPanelProps> = ({
           lastCalculationRef.current = {
             startTime: currentTime,
             endTime: currentEndTime,
-            islandCount: currentIslandCount
+            islandCount: islands.length,
+            visibleIslands: currentVisibleIslands
           };
           
           calculationTimerRef.current = null;
         }, 10);
-      } else if (isPlaying && currentTime > lastCalculationRef.current.startTime) {
-        // For continuous playback, only calculate new conjunctions at the extended end
+      } else {
+        // Handle forward time changes and no time changes
         
-        // Calculate only the new time slice
-        const additionalTimeToCheck = timeIncrement; // ms of time that has passed
-        const newEndTime = lastCalculationRef.current.endTime + additionalTimeToCheck;
+        // Check if we need to calculate more conjunctions - do we have enough visible upcoming ones?
+        const visibleUpcomingCount = filteredConjunctions.filter(conj => 
+          conj.startTime > currentTime &&
+          islands.find(i => i.id === conj.island1Id)?.visible &&
+          islands.find(i => i.id === conj.island2Id)?.visible
+        ).length;
         
-        // No need to show calculating indicator for incremental updates
-        const newConjunctions = simulator.calculateUpcomingConjunctions(
-          additionalTimeToCheck / 1000, // Convert ms to days
-          lastCalculationRef.current.endTime // Start from previous end time
-        );
-        
-        // Filter out any conjunctions that might overlap with existing ones
-        const newUniqueConjunctions = newConjunctions.filter(newConj => 
-          !conjunctions.some(existingConj => 
-            (newConj.island1Id === existingConj.island1Id && newConj.island2Id === existingConj.island2Id &&
-             Math.abs(newConj.startTime - existingConj.startTime) < 3600) || // Within 1 hour
-            (newConj.island1Id === existingConj.island2Id && newConj.island2Id === existingConj.island1Id &&
-             Math.abs(newConj.startTime - existingConj.startTime) < 3600)
-          )
-        );
-        
-        // Filter out conjunctions that are now in the past
-        const updatedConjunctions = [
-          ...conjunctions,
-          ...newUniqueConjunctions
-        ].filter(conj => conj.endTime >= currentTime - 86400); // Keep conjunctions that ended within the last day
-        
-        // Sort all conjunctions by start time without limiting
-        const sortedConjunctions = updatedConjunctions.sort((a, b) => a.startTime - b.startTime);
-        
-        // Update the conjunctions state
-        setConjunctions(sortedConjunctions);
-        
-        // Update the last calculation reference
-        lastCalculationRef.current = {
-          ...lastCalculationRef.current,
-          startTime: currentTime,
-          endTime: newEndTime
-        };
+        if (!hasRemovedConjunctions && visibleUpcomingCount >= MAX_CONJUNCTIONS) {
+          // Just update the conjunctions list with filtered ones (past removed)
+          // Don't update lastCalculationRef so future calculations start from the right spot
+          setConjunctions(filteredConjunctions);
+        } else if (timeIncrement > 0) {
+          // We need to calculate more conjunctions
+          
+          // Always use actual elapsed time for calculation window
+          const additionalTimeToCheck = timeIncrement;
+          const newEndTime = lastCalculationRef.current.endTime + additionalTimeToCheck;
+          
+          // Calculate new conjunctions
+          calculationTimerRef.current = window.setTimeout(() => {
+            const newConjunctions = simulator.calculateUpcomingConjunctions(
+              additionalTimeToCheck / 1000, // Convert ms to days
+              lastCalculationRef.current.endTime // Start from previous end time
+            );
+            
+            // Filter out any conjunctions that might overlap with existing ones
+            const newUniqueConjunctions = newConjunctions.filter(newConj => 
+              !filteredConjunctions.some(existingConj => 
+                (newConj.island1Id === existingConj.island1Id && newConj.island2Id === existingConj.island2Id &&
+                 Math.abs(newConj.startTime - existingConj.startTime) < 3600) || // Within 1 hour
+                (newConj.island1Id === existingConj.island2Id && newConj.island2Id === existingConj.island1Id &&
+                 Math.abs(newConj.startTime - existingConj.startTime) < 3600)
+              )
+            );
+            
+            // Sort all conjunctions by start time without limiting
+            const sortedConjunctions = [
+              ...filteredConjunctions,
+              ...newUniqueConjunctions
+            ].sort((a, b) => a.startTime - b.startTime);
+            
+            // Update the conjunctions state
+            setConjunctions(sortedConjunctions);
+            
+            // Update the last calculation reference
+            lastCalculationRef.current = {
+              ...lastCalculationRef.current,
+              startTime: currentTime,
+              endTime: newEndTime
+            };
+            
+            calculationTimerRef.current = null;
+          }, 10);
+        } else if (hasRemovedConjunctions) {
+          // Time hasn't changed (or zero increment) but we removed past conjunctions
+          setConjunctions(filteredConjunctions);
+        }
       }
     };
     
@@ -200,15 +222,7 @@ const ConjunctionsPanel: React.FC<ConjunctionsPanelProps> = ({
     // Store current time for comparison in next update
     prevTimeRef.current = currentTime;
     
-    // Set up interval for recalculation during continuous playback
-    const intervalId = setInterval(() => {
-      if (isPlayingRef.current) {
-        calculateConjunctions();
-      }
-    }, 5000);
-    
     return () => {
-      clearInterval(intervalId);
       if (calculationTimerRef.current !== null) {
         clearTimeout(calculationTimerRef.current);
       }
@@ -228,11 +242,15 @@ const ConjunctionsPanel: React.FC<ConjunctionsPanelProps> = ({
       // Store all conjunctions without limiting
       setConjunctions(allConjunctions);
       
+      // Get current visible islands string
+      const currentVisibleIslands = islands.filter(island => island.visible).map(island => island.id).sort().join(',');
+      
       // Update reference
       lastCalculationRef.current = {
         startTime: currentTime,
         endTime: currentTime + (maxLookAheadDays * 1000),
-        islandCount: islands.length
+        islandCount: islands.length,
+        visibleIslands: currentVisibleIslands
       };
       
       calculationTimerRef.current = null;

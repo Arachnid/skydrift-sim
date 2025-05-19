@@ -218,8 +218,6 @@ const SkydriftArchipelagoSimulation = () => {
           return;
         }
         
-        console.log("parseShareUrl");
-        
         // Keep track if we've applied any parameters
         let appliedParameters = false;
         
@@ -341,7 +339,6 @@ const SkydriftArchipelagoSimulation = () => {
     };
 
     // Parse URL when component first mounts
-    console.log("parseShareUrl");
     parseShareUrl();
 
     // Listen for popstate events (back/forward browser navigation)
