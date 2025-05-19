@@ -82,18 +82,6 @@ const ShareSimulationButton: React.FC<ShareSimulationButtonProps> = ({
         startIcon={<ShareIcon />}
         onClick={handleShareClick}
         sx={{ mr: 1 }}
-        endIcon={activeJourneys.length > 0 ? 
-          <Badge 
-            badgeContent={activeJourneys.length} 
-            color="primary"
-            sx={{ 
-              position: 'relative',
-              transform: 'none'
-            }}
-          >
-            <span />
-          </Badge> : undefined
-        }
       >
         Share
       </Button>
